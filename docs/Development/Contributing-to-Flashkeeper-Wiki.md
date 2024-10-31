@@ -34,11 +34,11 @@ The simplest way to make a small change to existing pages is directly on GitHub
  as it requires no software to be installed.
 
 * Start by login into GitHub and forking
-[tlaurion/flashkeeper](https://github.com/tlaurion/flashkeeper).
-* Find the desired page on [osresearch.net](http://osresearch.net/).  Click on
+[linuxboot/flashkeeper](https://github.com/linuxboot/flashkeeper).
+* Find the desired page on [flashkeeper.org](http://flashkeeper.org/).  Click on
 the link at the bottom of the page saying *"Edit this page on GitHub."*
 * This will bring you to an editor on GitHub and should mention that you do not
-have write access to the `tlaurion/flashkeeper` repo and that changes will be
+have write access to the `linuxboot/flashkeeper` repo and that changes will be
 made in your fork.
 * After making the desired edits, add a summary of the changes to the comment
  box and click the "Propose changes" button.
@@ -68,7 +68,7 @@ Additionally, the theme will also need to be installed as the remote theme does
 
 After installing Jekyll and the Just the Docs theme you may run the wiki on your local system for faster testing and development.
 * log in to GitHub and fork
-[tlaurion/flashkeeper](https://github.com/tlaurion/flashkeeper).  Then clone
+[linuxboot/flashkeeper](https://github.com/linuxboot/flashkeeper).  Then clone
 your fork locally.
 * Navigate to the base of the locally cloned repo and alter `_config.yml` to use
  the local theme.  The simplest way is to comment out the line that beings
@@ -109,4 +109,4 @@ Please verify `https://YOUR_USERNAME_HERE.github.io/flashkeeper/` with `https://
 
 ### Pushing Changes Upstream
 
-Create a pull request in the tlaurion/flashkeeper project that points to your changes to request review and contribute back to the parent project.
+Create a pull request in the linuxboot/flashkeeper project that points to your changes to request review and contribute back to the parent project.

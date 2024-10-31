@@ -10,5 +10,5 @@ has_toc: false
 Contributing
 ====
 
-* [Issues tagged with "Help Wanted"](https://github.com/tlaurion/flashkeeper/labels/help%20wanted)
+* [Issues tagged with "Help Wanted"](https://github.com/linuxboot/flashkeeper/labels/help%20wanted)
 * [Contributing to the Flashkeeper wiki](/Contributing-to-Flashkeeper-wiki/)
