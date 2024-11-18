@@ -70,24 +70,15 @@ After installing Jekyll and the Just the Docs theme you may run the wiki on your
 * log in to GitHub and fork
 [linuxboot/flashkeeper](https://github.com/linuxboot/flashkeeper).  Then clone
 your fork locally.
-* Navigate to the base of the locally cloned repo and alter `_config.yml` to use
- the local theme.  The simplest way is to comment out the line that beings
- `remote_theme` and add a line `theme: "just-the-docs"`
-
- ```yaml
- # remote_theme: pmarsceill/just-the-docs
- theme: "just-the-docs"
- ```
+* Navigate to the base of the locally cloned repo 
 * Now start Jekyll with:
 ```bash
-$> jekyll serve
+$> jekyll serve --config docs/_config-local.yml
 ```
 This will start the Jekyll development web server and should be viewable in a
 web browser at `http://localhost:4000/`
 
 * create a branch in git for your changes
-* Make the desired changes, commit them.  **BE SURE NOT TO ADD `_config.yml`**
-to your changes.
 * Push the changes to your forked repo on github
 
 ### Testing Changes on Github

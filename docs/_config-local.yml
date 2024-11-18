@@ -1,6 +1,6 @@
-# This config is solely used by Github Pages
-# To test locally, refer to _config-local.yml
-remote_theme: pmarsceill/just-the-docs
+# This config is to run with jekyll locally:
+#  to preview your changes, do 'jekyll serve --config docs/_config-local.yml'
+theme: "just-the-docs"
 color_scheme: dark
 heading_anchors: true
 aux_links:
@@ -10,8 +10,8 @@ aux_links_new_tab: true
 
 title: Flashkeeper - Wiki
 
-last_edit_timestamp: true # show or hide edit time - page must have `last_modified_date` defined in the frontmatter
-last_edit_time_format: "%b %e %Y at %I:%M %p" # uses ruby's time format: https://ruby-doc.org/stdlib-2.7.0/libdoc/time/rdoc/Time.html
+last_edit_timestamp: true
+last_edit_time_format: "%b %e %Y at %I:%M %p"
 
 # Footer "Edit this page on GitHub" link text
 gh_edit_link: true
@@ -21,7 +21,8 @@ gh_edit_branch: "main"
 gh_edit_source: docs
 gh_edit_view_mode: "edit"
 
-# baseurl: ""  # Uncomment if you need a baseurl for any reason
+# For local development, use an empty baseurl
+baseurl: ""  # This ensures paths resolve correctly during local testing
 
 # Include files and directories
 include:
