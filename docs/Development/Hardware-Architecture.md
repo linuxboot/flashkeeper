@@ -26,6 +26,9 @@ Flashkeeper's hardware is a modular system, able to be configured for a variety 
 Components
 ---
 ### Chip Adapter
+
+![design]({{ site.baseurl }}/images/wponly.png)
+
 A small flex PCB which installs semi-permanently on top of an SPI flash chip. Provides control over write protection, and a breakout of the SPI bus to external devices. A flash adapter can be:
 
 - Soldered or Solderless
