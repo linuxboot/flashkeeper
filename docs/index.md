@@ -22,8 +22,11 @@ nav_order: 1
 
 Flashkeeper is a device designed for installation inside a computer, connecting to the SPI flash chip where firmware is stored and making write protection control and reprogramming easy and secure.
 
-![design]({{ site.baseurl }}/images/chip.png)
-Solderless model of one option for spring-loaded contacts (pogo pins) interfacing with a SOIC-8 flash chip from above (FreeCAD)
+![wponly]({{ site.baseurl }}/images/wponly.png)
+A WP-only soldered adapter, to be soldered onto the flash chip from above and offering a write protection switch for [SPI chips supporting WP](https://github.com/linuxboot/flashkeeper/pull/14/files#diff-648b427619d21e01c18aefc3ff817e444286098d8048b6545a4089b1ead54682) (KiCAD)
+
+![pogopins]({{ site.baseurl }}/images/chip.png)
+Spring-loaded contacts (pogo pins) interfacing with a SOIC-8 flash chip from above, as in the solderless adapter (FreeCAD)
 
 ## Further reading
 
