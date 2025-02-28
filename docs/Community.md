@@ -7,7 +7,7 @@ nav_order: 99
 
 Matrix channel
 ===
-TBD
+Official channel is at [#flashkeeper:matrix.org](https://matrix.to/#/#flashkeeper:matrix.org)
 
 Found a bug
 ===
