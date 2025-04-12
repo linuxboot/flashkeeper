@@ -28,6 +28,9 @@ A WP-only soldered adapter, to be soldered onto the flash chip from above and of
 ![pogopins]({{ site.baseurl }}/images/chip.png)
 Spring-loaded contacts (pogo pins) interfacing with a SOIC-8 flash chip from above, as in the solderless adapter (FreeCAD)
 
+![wson]({{ site.baseurl }}/images/wson.png)
+A WSON flash chip, a soldered WP-only adapter, and its interposer block (FreeCAD)
+
 ## Further reading
 
 * [Flashkeeper - Original project scope - Presentation at QubesOS mini-summit 2024](https://cfp.3mdeb.com/qubes-os-summit-2024/talk/FCENX9/)
