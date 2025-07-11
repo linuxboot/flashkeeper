@@ -32,6 +32,7 @@ fp-info-cache
 
 # Generated gerber and drill files - you should always generate these from the source, there is no guarantee they are up-to-date!
 **/Gerbers/
+**/Gerber/
 
 # Also ignore FreeCAD autobackup files
 *.FCStd1
