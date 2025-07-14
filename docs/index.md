@@ -27,7 +27,7 @@ Flashkeeper is a family of open-hardware add-ons for standard SOIC-8 and WSON-8 
 <!-- markdownlint-enable MD033 -->
 
 ## For Users
-Flashkeeper is a modular family of several related devices - to find out which components you need, and where to get them, see [Getting Started](/Getting-Started/).
+Flashkeeper is a modular family of several related devices - to find out which components you need, and where to get them, see [Getting Started](/Getting-Started).
 
 ## For Developers
 Flashkeeper development takes place on the [15h.org](https://15h.org) Git forge, and is mirrored to Github as a backup. If you wish to participate in Flashkeeper development on 15h.org infrastructure, please request an account in either the [Flashkeeper room](https://matrix.to/#/#flashkeeper:matrix.org) or the 15h.org room on Matrix. Issues may be opened on either 15h.org or Github.
