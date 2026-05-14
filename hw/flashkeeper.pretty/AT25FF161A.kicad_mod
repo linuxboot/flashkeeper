@@ -1,0 +1,206 @@
+(footprint "AT25FF161A"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(descr "WLCSP/XFBGA 8-pin package, staggered pins, http://www.adestotech.com/wp-content/uploads/DS-AT25DF041B_040.pdf")
+	(tags "WLCSP WLCSP-8 XFBGA XFBGA-8  CSP BGA Chip-Scale Glass-Top")
+	(property "Reference" "REF**"
+		(at 0 -2.31 0)
+		(layer "F.SilkS")
+		(uuid "9fe6d171-4b77-4123-a1f5-5c2c0796a8f5")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "AT25FF161A"
+		(at 0 2.76 0)
+		(layer "F.Fab")
+		(uuid "b8af9121-1010-4f71-9d92-a242dd60295b")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "bc736cde-0e7a-42f8-ac58-57d3c58d8389")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "f4e634e1-ff65-45d1-b3b9-666de6db0fb5")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_circle
+		(center -1.1 -1.1)
+		(end -1.05 -1.1)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill yes)
+		(layer "F.SilkS")
+		(uuid "02a57b09-7efa-461d-9af9-1ecd99b3e7c0")
+	)
+	(fp_rect
+		(start -0.97 -0.96)
+		(end 0.971371 0.961371)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "82a23264-f44f-409e-abb3-97c4194c341a")
+	)
+	(fp_line
+		(start -0.8835 -0.8685)
+		(end -0.8835 0.8685)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "e00f32dd-7a71-44c5-bf13-5740feaee627")
+	)
+	(fp_line
+		(start -0.88 -0.87)
+		(end 0.88 -0.87)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "8317b4d7-b0bc-4592-a66c-cd17a261da50")
+	)
+	(fp_line
+		(start -0.88 0.87)
+		(end 0.88 0.87)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "7f2fc44a-4628-4189-b452-a8ee035a9210")
+	)
+	(fp_line
+		(start 0.8835 -0.8685)
+		(end 0.8835 0.8685)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "c829b550-d36d-459f-8366-607c43769b9e")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "521122ac-9db1-458b-9b59-d8257b6d57db")
+		(effects
+			(font
+				(size 0.4 0.4)
+				(thickness 0.06)
+			)
+		)
+	)
+	(pad "A1" smd circle
+		(at -0.35 -0.4)
+		(size 0.25 0.25)
+		(property pad_prop_bga)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_mask_margin 0.03)
+		(uuid "40710070-9639-4200-ad07-c8346a1bc939")
+	)
+	(pad "A3" smd circle
+		(at 0.35 -0.4)
+		(size 0.25 0.25)
+		(property pad_prop_bga)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_mask_margin 0.03)
+		(uuid "e21c433e-6fa9-4f1a-9f65-52139e1d01df")
+	)
+	(pad "B2" smd circle
+		(at 0 -0.2)
+		(size 0.25 0.25)
+		(property pad_prop_bga)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_mask_margin 0.03)
+		(uuid "a632f57d-8aa1-4c8e-b9a6-4277c1036a57")
+	)
+	(pad "C1" smd circle
+		(at -0.35 0)
+		(size 0.25 0.25)
+		(property pad_prop_bga)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_mask_margin 0.03)
+		(uuid "c0397942-3338-4bc1-8a45-1b72a4324a5b")
+	)
+	(pad "C3" smd circle
+		(at 0.35 0)
+		(size 0.25 0.25)
+		(property pad_prop_bga)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_mask_margin 0.03)
+		(uuid "8b2311ee-abf4-4746-892b-1a9028dd9c25")
+	)
+	(pad "D2" smd circle
+		(at 0 0.2)
+		(size 0.25 0.25)
+		(property pad_prop_bga)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_mask_margin 0.03)
+		(uuid "d813aceb-9735-4e31-8573-903b80b09c7b")
+	)
+	(pad "E1" smd circle
+		(at -0.35 0.4)
+		(size 0.25 0.25)
+		(property pad_prop_bga)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_mask_margin 0.03)
+		(uuid "1f89a6a3-21dd-4521-8f8a-3c418227757e")
+	)
+	(pad "E3" smd circle
+		(at 0.35 0.4)
+		(size 0.25 0.25)
+		(property pad_prop_bga)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_mask_margin 0.03)
+		(uuid "8cf69ef5-088a-438a-ad71-7a1ca040eb55")
+	)
+	(embedded_fonts no)
+	(model "${KICAD9_3DMODEL_DIR}/Package_CSP.3dshapes/WLCSP-8_1.58x1.63x0.35mm_Layout3x5_P0.35x0.4mm_Ball0.25mm_Pad0.25mm_NSMD.step"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

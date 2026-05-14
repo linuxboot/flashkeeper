@@ -1,0 +1,12 @@
+# UART on DTX/DRX pins
+set_io ser_rx      A1
+set_io ser_tx      B1
+
+# SPI Flash
+set_io flash_clk  D1
+set_io flash_csb  C1
+set_io flash_io0  F1
+set_io flash_io1  E1
+
+# LED indicator (reused CDONE pin)
+set_io led_n     D3

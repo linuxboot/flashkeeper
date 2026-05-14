@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "ICE40UP5K-UWG30ITR")(type "Legacy")(uri "${KIPRJMOD}/ICE40UP5K-UWG30ITR/ICE40UP5K-UWG30ITR.lib")(options "")(descr ""))
+)
