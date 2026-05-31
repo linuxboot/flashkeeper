@@ -25,7 +25,7 @@ The Flashkeeper FPGA module is special variant of the Flashkeeper chip adapter, 
 <!-- markdownlint-enable MD033 -->
 
 ## System Compatibility
-The Flashkeeper FPGA module is designed for use on most standard 8-pin NOR flash packages, including most SOIC-8 and WSON-8 variants. The module body, excluding its attachment legs, measures 4.7 x 7.5 mm, and the entire module, when fully folded, stands 6.0mm above the surface of the host flash chip, including its "tail" section (which contains the battery, buzzer, and associated components). It can be installed in its folded configuration on , as well as on some laptops. Unfolded, it requires only 2.6mm of vertical space above the flash chip, allowing the tail to sit beside the host flash chip.
+The Flashkeeper FPGA module is designed for use on most standard 8-pin NOR flash packages, including most SOIC-8 and WSON-8 variants. The module body, excluding its attachment legs, measures 4.7 x 7.5 mm, and the entire module, when fully folded, stands 6.0mm above the surface of the host flash chip, including its "tail" section (which contains the battery, buzzer, and associated components). In many systems, it can be installed in this folded configuration, with a footprint only negligibly larger than the flash chip itself. Unfolded, it requires only 2.6mm of vertical space above the flash chip, allowing the tail to sit beside the host flash chip.
 
 The folded configuration is recommended for:
 * Nearly all desktop and server platforms
