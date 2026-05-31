@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "flashkeeper") (type "KiCad") (uri "/home/dodoid/Flashkeeper/flashkeeper/hw/flashkeeper.kicad_sym") (options "") (descr ""))
+)

@@ -1,0 +1,94 @@
+(footprint "SolderJumper_0.4mm"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0 -4.1 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(uuid "686e6cd3-81d5-4418-ac7a-35b462a21856")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.1)
+			)
+		)
+	)
+	(property "Value" "SolderJumper_0.4mm"
+		(at 0 -2.6 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "67d1610c-4327-453d-94f6-b3f282242efd")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a64d2ea2-288b-4b39-8c62-ad74f89499e2")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "2270c036-d09b-4cff-bb8a-c52d5b077dad")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr exclude_from_pos_files exclude_from_bom)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_rect
+		(start -0.1 -0.2)
+		(end 0.1 0.2)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill yes)
+		(layer "F.Mask")
+		(uuid "823eeb33-68c1-4c7d-8767-5597d8f53e28")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 -1.1 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "59ba5ef1-02ab-4a8e-9c90-7788ed2f8bc7")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at -0.25 0)
+		(size 0.325 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "15710bed-ef21-425e-b1e9-fdb93b41d713")
+	)
+	(pad "2" smd rect
+		(at 0.25 0)
+		(size 0.325 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "4ac39b1b-1a7d-445c-a562-fee262a45b09")
+	)
+	(embedded_fonts no)
+)

@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "DebugDongle-rescue")(type "Legacy")(uri "${KIPRJMOD}/DebugDongle-rescue.lib")(options "")(descr ""))
+)
