@@ -1,570 +1,431 @@
-/*
- *  PicoSoC - A simple example SoC using PicoRV32
- *
- *  Copyright (C) 2017  Claire Xenia Wolf <claire@yosyshq.com>
- *
- *  Permission to use, copy, modify, and/or distribute this software for any
- *  purpose with or without fee is hereby granted, provided that the above
- *  copyright notice and this permission notice appear in all copies.
- *
- *  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- *  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- *  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- *  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- */
-
+#include "picosoc.h"
+#include "serprog.h"
 #include <stdint.h>
-#include <stdbool.h>
+#include "memops.h"
+#include "tweetnacl.h"
+#include "rng.h"
 
-// this is a pointer to 0x0, but the compiler does not know that because "sram" is
-// a linker symbol from sections.lds.
-extern uint32_t sram;
+#define _EDE_IMPLEMENTATION_
+#include "ede.h"
 
-#define reg_spictrl (*(volatile uint32_t*)0x02000000)
-#define reg_uart_clkdiv (*(volatile uint32_t*)0x02000004)
-#define reg_uart_data (*(volatile uint32_t*)0x02000008)
-#define reg_leds (*(volatile uint32_t*)0x03000000)
+#include "flashkeeper_config.h"
 
-#define MEM_TOTAL 0x20000
+#define SERIAL_PASSWORD_SALT_BYTES 16
 
-// --------------------------------------------------------
+extern void randombytes(uint8_t *, uint64_t);
 
-extern uint32_t flashio_worker_begin;
-extern uint32_t flashio_worker_end;
+void hspi_read_flash_id(){
+	uint8_t buffer[4] = { 0x9F, };
+	hspi_flashio(buffer, 4, 0);
 
-void flashio(uint8_t *data, int len, uint8_t wrencmd)
-{
-	uint32_t func[&flashio_worker_end - &flashio_worker_begin];
-
-	uint32_t *src_ptr = &flashio_worker_begin;
-	uint32_t *dst_ptr = func;
-
-	while (src_ptr != &flashio_worker_end)
-		*(dst_ptr++) = *(src_ptr++);
-
-	((void(*)(uint8_t*, uint32_t, uint32_t))func)(data, len, wrencmd);
-}
-
-void set_flash_qspi_flag()
-{
-	uint8_t buffer[8];
-
-	// Read Configuration Registers (RDCR1 35h)
-	buffer[0] = 0x35;
-	buffer[1] = 0x00; // rdata
-	flashio(buffer, 2, 0);
-	uint8_t sr2 = buffer[1];
-
-	// Write Enable Volatile (50h) + Write Status Register 2 (31h)
-	buffer[0] = 0x31;
-	buffer[1] = sr2 | 2; // Enable QSPI
-	flashio(buffer, 2, 0x50);
-}
-
-void set_flash_mode_spi()
-{
-	reg_spictrl = (reg_spictrl & ~0x007f0000) | 0x00000000;
-}
-
-void set_flash_mode_dual()
-{
-	reg_spictrl = (reg_spictrl & ~0x007f0000) | 0x00400000;
-}
-
-void set_flash_mode_quad()
-{
-	reg_spictrl = (reg_spictrl & ~0x007f0000) | 0x00240000;
-}
-
-void set_flash_mode_qddr()
-{
-	reg_spictrl = (reg_spictrl & ~0x007f0000) | 0x00670000;
-}
-
-void enable_flash_crm()
-{
-	reg_spictrl |= 0x00100000;
-}
-
-// --------------------------------------------------------
-
-void putchar(char c)
-{
-	if (c == '\n')
-		putchar('\r');
-	reg_uart_data = c;
-}
-
-void print(const char *p)
-{
-	while (*p)
-		putchar(*(p++));
-}
-
-void print_hex(uint32_t v, int digits)
-{
-	for (int i = 7; i >= 0; i--) {
-		char c = "0123456789abcdef"[(v >> (4*i)) & 15];
-		if (c == '0' && i >= digits) continue;
-		putchar(c);
-		digits = i;
-	}
-}
-
-void print_dec(uint32_t v)
-{
-	if (v >= 1000) {
-		print(">=1000");
-		return;
-	}
-
-	if      (v >= 900) { putchar('9'); v -= 900; }
-	else if (v >= 800) { putchar('8'); v -= 800; }
-	else if (v >= 700) { putchar('7'); v -= 700; }
-	else if (v >= 600) { putchar('6'); v -= 600; }
-	else if (v >= 500) { putchar('5'); v -= 500; }
-	else if (v >= 400) { putchar('4'); v -= 400; }
-	else if (v >= 300) { putchar('3'); v -= 300; }
-	else if (v >= 200) { putchar('2'); v -= 200; }
-	else if (v >= 100) { putchar('1'); v -= 100; }
-
-	if      (v >= 90) { putchar('9'); v -= 90; }
-	else if (v >= 80) { putchar('8'); v -= 80; }
-	else if (v >= 70) { putchar('7'); v -= 70; }
-	else if (v >= 60) { putchar('6'); v -= 60; }
-	else if (v >= 50) { putchar('5'); v -= 50; }
-	else if (v >= 40) { putchar('4'); v -= 40; }
-	else if (v >= 30) { putchar('3'); v -= 30; }
-	else if (v >= 20) { putchar('2'); v -= 20; }
-	else if (v >= 10) { putchar('1'); v -= 10; }
-
-	if      (v >= 9) { putchar('9'); v -= 9; }
-	else if (v >= 8) { putchar('8'); v -= 8; }
-	else if (v >= 7) { putchar('7'); v -= 7; }
-	else if (v >= 6) { putchar('6'); v -= 6; }
-	else if (v >= 5) { putchar('5'); v -= 5; }
-	else if (v >= 4) { putchar('4'); v -= 4; }
-	else if (v >= 3) { putchar('3'); v -= 3; }
-	else if (v >= 2) { putchar('2'); v -= 2; }
-	else if (v >= 1) { putchar('1'); v -= 1; }
-	else putchar('0');
-}
-
-char getchar_prompt(char *prompt)
-{
-	int32_t c = -1;
-
-	uint32_t cycles_begin, cycles_now, cycles;
-	__asm__ volatile ("rdcycle %0" : "=r"(cycles_begin));
-
-	reg_leds = ~0;
-
-	if (prompt)
-		print(prompt);
-
-	while (c == -1) {
-		__asm__ volatile ("rdcycle %0" : "=r"(cycles_now));
-		cycles = cycles_now - cycles_begin;
-		if (cycles > 12000000) {
-			if (prompt)
-				print(prompt);
-			cycles_begin = cycles_now;
-			reg_leds = ~reg_leds;
-		}
-		c = reg_uart_data;
-	}
-
-	reg_leds = 0;
-	return c;
-}
-
-char getchar()
-{
-	return getchar_prompt(0);
-}
-
-void cmd_print_spi_state()
-{
-	print("SPI State:\n");
-
-	print("  LATENCY ");
-	print_dec((reg_spictrl >> 16) & 15);
-	print("\n");
-
-	print("  DDR ");
-	if ((reg_spictrl & (1 << 22)) != 0)
-		print("ON\n");
-	else
-		print("OFF\n");
-
-	print("  QSPI ");
-	if ((reg_spictrl & (1 << 21)) != 0)
-		print("ON\n");
-	else
-		print("OFF\n");
-
-	print("  CRM ");
-	if ((reg_spictrl & (1 << 20)) != 0)
-		print("ON\n");
-	else
-		print("OFF\n");
-}
-
-uint32_t xorshift32(uint32_t *state)
-{
-	/* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
-	uint32_t x = *state;
-	x ^= x << 13;
-	x ^= x >> 17;
-	x ^= x << 5;
-	*state = x;
-
-	return x;
-}
-
-void cmd_memtest()
-{
-	int cyc_count = 5;
-	int stride = 256;
-	uint32_t state;
-
-	volatile uint32_t *base_word = (uint32_t *) 0;
-	volatile uint8_t *base_byte = (uint8_t *) 0;
-
-	print("Running memtest ");
-
-	// Walk in stride increments, word access
-	for (int i = 1; i <= cyc_count; i++) {
-		state = i;
-
-		for (int word = 0; word < MEM_TOTAL / sizeof(int); word += stride) {
-			*(base_word + word) = xorshift32(&state);
-		}
-
-		state = i;
-
-		for (int word = 0; word < MEM_TOTAL / sizeof(int); word += stride) {
-			if (*(base_word + word) != xorshift32(&state)) {
-				print(" ***FAILED WORD*** at ");
-				print_hex(4*word, 4);
-				print("\n");
-				return;
-			}
-		}
-
-		print(".");
-	}
-
-	// Byte access
-	for (int byte = 0; byte < 128; byte++) {
-		*(base_byte + byte) = (uint8_t) byte;
-	}
-
-	for (int byte = 0; byte < 128; byte++) {
-		if (*(base_byte + byte) != (uint8_t) byte) {
-			print(" ***FAILED BYTE*** at ");
-			print_hex(byte, 4);
-			print("\n");
-			return;
-		}
-	}
-
-	print(" passed\n");
-}
-
-// --------------------------------------------------------
-
-void cmd_read_flash_id()
-{
-	uint8_t buffer[17] = { 0x9F, /* zeros */ };
-	flashio(buffer, 17, 0);
-
-	for (int i = 1; i <= 16; i++) {
+	for (int i = 1; i <= 3; i++) {
 		putchar(' ');
 		print_hex(buffer[i], 2);
 	}
 	putchar('\n');
 }
 
-// --------------------------------------------------------
+void hspi_print_spi_state(){
+	print("SPI State:\n");
 
-uint8_t cmd_read_flash_reg(uint8_t cmd)
-{
-	uint8_t buffer[2] = {cmd, 0};
-	flashio(buffer, 2, 0);
-	return buffer[1];
-}
-
-void print_reg_bit(int val, const char *name)
-{
-	for (int i = 0; i < 12; i++) {
-		if (*name == 0)
-			putchar(' ');
-		else
-			putchar(*(name++));
-	}
-
-	putchar(val ? '1' : '0');
-	putchar('\n');
-}
-
-void cmd_read_flash_regs()
-{
-	putchar('\n');
-
-	uint8_t sr1 = cmd_read_flash_reg(0x05);
-	uint8_t sr2 = cmd_read_flash_reg(0x35);
-	uint8_t sr3 = cmd_read_flash_reg(0x15);
-
-	print_reg_bit(sr1 & 0x01, "S0  (BUSY)");
-	print_reg_bit(sr1 & 0x02, "S1  (WEL)");
-	print_reg_bit(sr1 & 0x04, "S2  (BP0)");
-	print_reg_bit(sr1 & 0x08, "S3  (BP1)");
-	print_reg_bit(sr1 & 0x10, "S4  (BP2)");
-	print_reg_bit(sr1 & 0x20, "S5  (TB)");
-	print_reg_bit(sr1 & 0x40, "S6  (SEC)");
-	print_reg_bit(sr1 & 0x80, "S7  (SRP)");
-	putchar('\n');
-
-	print_reg_bit(sr2 & 0x01, "S8  (SRL)");
-	print_reg_bit(sr2 & 0x02, "S9  (QE)");
-	print_reg_bit(sr2 & 0x04, "S10 ----");
-	print_reg_bit(sr2 & 0x08, "S11 (LB1)");
-	print_reg_bit(sr2 & 0x10, "S12 (LB2)");
-	print_reg_bit(sr2 & 0x20, "S13 (LB3)");
-	print_reg_bit(sr2 & 0x40, "S14 (CMP)");
-	print_reg_bit(sr2 & 0x80, "S15 (SUS)");
-	putchar('\n');
-
-	print_reg_bit(sr3 & 0x01, "S16 ----");
-	print_reg_bit(sr3 & 0x02, "S17 ----");
-	print_reg_bit(sr3 & 0x04, "S18 (WPS)");
-	print_reg_bit(sr3 & 0x08, "S19 ----");
-	print_reg_bit(sr3 & 0x10, "S20 ----");
-	print_reg_bit(sr3 & 0x20, "S21 (DRV0)");
-	print_reg_bit(sr3 & 0x40, "S22 (DRV1)");
-	print_reg_bit(sr3 & 0x80, "S23 (HOLD)");
-	putchar('\n');
-}
-// --------------------------------------------------------
-
-uint32_t cmd_benchmark(bool verbose, uint32_t *instns_p)
-{
-	uint8_t data[256];
-	uint32_t *words = (void*)data;
-
-	uint32_t x32 = 314159265;
-
-	uint32_t cycles_begin, cycles_end;
-	uint32_t instns_begin, instns_end;
-	__asm__ volatile ("rdcycle %0" : "=r"(cycles_begin));
-	__asm__ volatile ("rdinstret %0" : "=r"(instns_begin));
-
-	for (int i = 0; i < 20; i++)
-	{
-		for (int k = 0; k < 256; k++)
-		{
-			x32 ^= x32 << 13;
-			x32 ^= x32 >> 17;
-			x32 ^= x32 << 5;
-			data[k] = x32;
-		}
-
-		for (int k = 0, p = 0; k < 256; k++)
-		{
-			if (data[k])
-				data[p++] = k;
-		}
-
-		for (int k = 0, p = 0; k < 64; k++)
-		{
-			x32 = x32 ^ words[k];
-		}
-	}
-
-	__asm__ volatile ("rdcycle %0" : "=r"(cycles_end));
-	__asm__ volatile ("rdinstret %0" : "=r"(instns_end));
-
-	if (verbose)
-	{
-		print("Cycles: 0x");
-		print_hex(cycles_end - cycles_begin, 8);
-		putchar('\n');
-
-		print("Instns: 0x");
-		print_hex(instns_end - instns_begin, 8);
-		putchar('\n');
-
-		print("Chksum: 0x");
-		print_hex(x32, 8);
-		putchar('\n');
-	}
-
-	if (instns_p)
-		*instns_p = instns_end - instns_begin;
-
-	return cycles_end - cycles_begin;
-}
-
-// --------------------------------------------------------
-
-void cmd_benchmark_all()
-{
-	uint32_t instns = 0;
-
-	print("default   ");
-	set_flash_mode_spi();
-	print_hex(cmd_benchmark(false, &instns), 8);
-	putchar('\n');
-
-	print("dual      ");
-	set_flash_mode_dual();
-	print_hex(cmd_benchmark(false, &instns), 8);
-	putchar('\n');
-
-	// print("dual-crm  ");
-	// enable_flash_crm();
-	// print_hex(cmd_benchmark(false, &instns), 8);
-	// putchar('\n');
-
-	print("quad      ");
-	set_flash_mode_quad();
-	print_hex(cmd_benchmark(false, &instns), 8);
-	putchar('\n');
-
-	print("quad-crm  ");
-	enable_flash_crm();
-	print_hex(cmd_benchmark(false, &instns), 8);
-	putchar('\n');
-
-	print("qddr      ");
-	set_flash_mode_qddr();
-	print_hex(cmd_benchmark(false, &instns), 8);
-	putchar('\n');
-
-	print("qddr-crm  ");
-	enable_flash_crm();
-	print_hex(cmd_benchmark(false, &instns), 8);
-	putchar('\n');
-
-}
-
-void cmd_echo()
-{
-	print("Return to menu by sending '!'\n\n");
-	char c;
-	while ((c = getchar()) != '!')
-		putchar(c);
-}
-
-// --------------------------------------------------------
-
-void main()
-{
-	reg_leds = 31;
-	reg_uart_clkdiv = 104;
-	print("Booting...\n");
-
-	reg_leds = 63;
-	set_flash_qspi_flag();
-
-	reg_leds = 127;
-	while (getchar_prompt("Press ENTER to continue...\n") != '\r') { /* wait */ }
-
-	print("\n");
-	print("  ____  _          ____         ____\n");
-	print(" |  _ \\(_) ___ ___/ ___|  ___  / ___|\n");
-	print(" | |_) | |/ __/ _ \\___ \\ / _ \\| |\n");
-	print(" |  __/| | (_| (_) |__) | (_) | |___\n");
-	print(" |_|   |_|\\___\\___/____/ \\___/ \\____|\n");
+	print("  LATENCY ");
+	print_dec((reg_hspictrl >> 16) & 15);
 	print("\n");
 
-	print("Total memory: ");
-	print_dec(MEM_TOTAL / 1024);
-	print(" KiB\n");
-	print("\n");
+	print("  DDR ");
+	if ((reg_hspictrl & (1 << 22)) != 0)
+		print("ON\n");
+	else
+		print("OFF\n");
 
-	cmd_memtest();
-	print("\n");
+	print("  QSPI ");
+	if ((reg_hspictrl & (1 << 21)) != 0)
+		print("ON\n");
+	else
+		print("OFF\n");
 
-	cmd_print_spi_state();
-	print("\n");
+	print("  CRM ");
+	if ((reg_hspictrl & (1 << 20)) != 0)
+		print("ON\n");
+	else
+		print("OFF\n");
+}
 
-	while (1)
-	{
-		print("\n");
+// (value -- )
+void config_spi(edei32 *s, edeu16 *sp, volatile uint32_t* reg){
+    if(*sp < 1){
+        print("Must provide parameters\n");
+        return;
+    }
+    *reg = (uint32_t) s[*sp - 1];
+    *sp = *sp - 1;
+}
 
-		print("Select an action:\n");
-		print("\n");
-		print("   [1] Read SPI Flash ID\n");
-		print("   [2] Read SPI Config Regs\n");
-		print("   [3] Switch to default mode\n");
-		print("   [4] Switch to Dual I/O mode\n");
-		print("   [5] Switch to Quad I/O mode\n");
-		print("   [6] Switch to Quad DDR mode\n");
-		print("   [7] Toggle continuous read mode\n");
-		print("   [9] Run simplistic benchmark\n");
-		print("   [0] Benchmark all configs\n");
-		print("   [M] Run Memtest\n");
-		print("   [S] Print SPI state\n");
-		print("   [e] Echo UART\n");
-		print("\n");
+void config_hspi(edei32 *s, edeu16 *sp){
+    config_spi(s, sp, &reg_hspictrl);
+}
 
-		for (int rep = 10; rep > 0; rep--)
-		{
-			print("Command> ");
-			char cmd = getchar();
-			if (cmd > 32 && cmd < 127)
-				putchar(cmd);
-			print("\n");
+void config_cspi(edei32 *s, edeu16 *sp){
+    config_spi(s, sp, &reg_cspictrl);
+}
 
-			switch (cmd)
-			{
-			case '1':
-				cmd_read_flash_id();
-				break;
-			case '2':
-				cmd_read_flash_regs();
-				break;
-			case '3':
-				set_flash_mode_spi();
-				break;
-			case '4':
-				set_flash_mode_dual();
-				break;
-			case '5':
-				set_flash_mode_quad();
-				break;
-			case '6':
-				set_flash_mode_qddr();
-				break;
-			case '7':
-				reg_spictrl = reg_spictrl ^ 0x00100000;
-				break;
-			case '9':
-				cmd_benchmark(true, 0);
-				break;
-			case '0':
-				cmd_benchmark_all();
-				break;
-			case 'M':
-				cmd_memtest();
-				break;
-			case 'P':
-				cmd_print_spi_state();
-				break;
-			case 'e':
-				cmd_echo();
-				break;
-			default:
-				continue;
-			}
+// (addr len -- )
+void dump_mem(edei32 *s, edeu16 *sp, volatile uint8_t* base, uint32_t window_size){
+    if(*sp < 2){
+        print("Must provide parameters\n");
+        return;
+    }
+    uint32_t addr = (uint32_t) s[*sp - 2];
+    uint32_t len  = (uint32_t) s[*sp - 1];
+    *sp = *sp - 2;
+    // Reading past the end of the memory-mapped window hits unmapped space
+    // and hangs the core, so bound-check before touching `base`.
+    if(addr >= window_size || len > window_size - addr){
+        print("Out of window\n");
+        return;
+    }
+    for (uint32_t i = addr; i < addr + len; i++) {
+        putchar(' ');
+        print_hex(base[i], 2);
+    }
+    putchar('\n');
+}
 
-			break;
-		}
-	}
+void dump_hspi(edei32 *s, edeu16 *sp){
+    // The window only works in MEMIO mode; manual mode is sticky after
+    // any flashio worker call, so enable it explicitly here.
+    spi_memio_enable(HSPI_CTL_ADDR);
+    dump_mem(s, sp, (volatile uint8_t*) HSPI_BASE_ADDR, FLASH_WINDOW_SIZE);
+}
+
+void dump_cspi(edei32 *s, edeu16 *sp){
+    spi_memio_enable(CSPI_CTL_ADDR);
+    dump_mem(s, sp, (volatile uint8_t*) CSPI_BASE_ADDR, FLASH_WINDOW_SIZE);
+}
+
+void dump_brom(edei32 *s, edeu16 *sp){
+    dump_mem(s, sp, (volatile uint8_t*) BROM_BASE_ADDR, BROM_WINDOW_SIZE);
+}
+
+uint8_t spi_sr(uint8_t reg, uint32_t reg_addr){
+    uint8_t buffer[2] = {0};
+    
+    switch(reg){
+        case 1: buffer[0] = 0x05; break; // Read Status Register-1
+        case 2: buffer[0] = 0x35; break; // Read Status Register-2
+        case 3: buffer[0] = 0x15; break; // Read Status Register-3
+    }
+
+    flashio_call(buffer, 2, 0, reg_addr, 0);
+
+    return buffer[1];
+}
+
+void spi_print_sr(uint32_t reg_addr){
+    print("SR1: ");
+    print_hex(spi_sr(1, reg_addr), 2);
+    print("\nSR2: ");
+    print_hex(spi_sr(2, reg_addr), 2);
+    print("\nSR3: ");
+    print_hex(spi_sr(3, reg_addr), 2);
+    print("\n");
+}
+
+void hspi_print_sr(){
+    spi_print_sr(HSPI_CTL_ADDR);
+}
+
+void cspi_print_sr(){
+    spi_print_sr(CSPI_CTL_ADDR);
+}
+
+void spi_wait_busy(uint32_t reg_addr){
+    while(spi_sr(1, reg_addr) & 1); // loop until BUSY goes zero
+}
+
+void hspi_chip_erase(){
+    uint8_t buffer[1] = {SPI_CMD_CHIP_ERASE};
+
+    hspi_flashio(buffer, 1, SPI_CMD_WE);
+    spi_wait_busy(HSPI_CTL_ADDR);
+}
+
+// ( d0 ... dn addr len -- )
+void write_spi(edei32 *s, edeu16 *sp, uint32_t reg_addr){
+    uint32_t flash_addr; // address to write at
+    uint16_t len; // length of the write in bytes (1-256)
+    uint8_t cells;
+
+    if(*sp < 2){
+        print("Must provide parameters\n");
+        return;
+    }
+
+    flash_addr = s[*sp - 2] & 0x00FFFFFF;
+    len = (uint16_t) s[*sp - 1];
+    cells = (uint8_t)((len + 3) / 4);
+
+    *sp = *sp - 2;
+
+    if(len < 1){
+        print("Length must be positive\n");
+        return;
+    }
+    if((0x100 - (flash_addr & 0xFF)) < len){
+        print("Write must fit within page\n");
+        return;
+    }
+    if(cells > *sp){
+        print("Insufficient data present on stack.\n");
+        return;
+    }
+    uint32_t cmd = ((uint32_t) SPI_CMD_PP << 24) | flash_addr; // assemble a 32-bit write command (02h + 24-bit address)
+
+    // Call flashio_call directly to use the prebuffer
+    flashio_call((uint8_t*) (s + (4 * (*sp - cells))), len, SPI_CMD_WE, reg_addr, cmd);
+
+    spi_wait_busy(reg_addr);
+
+    *sp = *sp - cells;
+}
+
+void write_hspi(edei32 *s, edeu16 *sp){
+    write_spi(s, sp, HSPI_CTL_ADDR);
+}
+
+void write_cspi(edei32 *s, edeu16 *sp){
+    write_spi(s, sp, CSPI_CTL_ADDR);
+}
+
+void cmd_rng(edei32 *s, edeu16 *sp){
+    if(*sp < 1){
+        print("Must provide parameters\n");
+        return;
+    }
+    int count = s[*sp - 1];
+    if (count < 0 || count > 256) count = 256;
+
+    static uint8_t buf[256];
+    randombytes(buf, (size_t) count);
+    for (int i = 0; i < count; i++) {
+        putchar(' ');
+        print_hex(buf[i], 2);
+    }
+    putchar('\n');
+
+    rng_stats_t st;
+    rng_get_stats(&st);
+
+    print("rng: bits ");
+    print_dec((int32_t) st.bits_seen);
+    print(" ok ");
+    print_dec((int32_t) st.batches_ok);
+    print(" fail ");
+    print_dec((int32_t) st.batches_fail);
+    print(" rct_max ");
+    print_dec((int32_t) st.rct_max);
+    print(" apt_max ");
+    print_dec((int32_t) st.apt_max);
+    putchar('\n');
+
+    *sp = *sp - 1;
+}
+
+// UART RX framing-error counter (uart status register bits [15:8]).
+// Nonzero after a serprog session means the RX dropped bit-slipped frames;
+// serprog NAKs any SPIOP whose window saw an increase.
+void cmd_ferr(){
+    print("uart ferr: ");
+    print_dec((reg_uart_sts >> 8) & 0xFF);
+    putchar('\n');
+}
+
+// Generate a password configuration for flashkeeper_config.h
+void generate_password(){
+    uint8_t hash_buffer[64];
+    uint8_t password_buffer[65 + SERIAL_PASSWORD_SALT_BYTES]; // +1 for the NUL that ede_getstring_placeholder writes at offset maxlen
+    uint16_t entered_len;
+
+    // Initialize the password buffer with the salt
+    randombytes(password_buffer, SERIAL_PASSWORD_SALT_BYTES);
+
+    print("New Password: ");
+    entered_len = ede_getstring_placeholder(getchar, putchar_raw, password_buffer + SERIAL_PASSWORD_SALT_BYTES, 64, '*');
+    crypto_hash_sha512(hash_buffer, password_buffer, entered_len + SERIAL_PASSWORD_SALT_BYTES);
+
+    print("static const uint32_t serial_password_salt[] = {");
+    for(int i=0; i < SERIAL_PASSWORD_SALT_BYTES; i+=4){
+        uint32_t w = (uint32_t) password_buffer[i] | ((uint32_t) password_buffer[i + 1] << 8) | ((uint32_t) password_buffer[i + 2] << 16) | ((uint32_t) password_buffer[i + 3] << 24);
+        print("0x");
+        ede_puthex(putchar, w, 32);
+        if(i < SERIAL_PASSWORD_SALT_BYTES - 4) print(",");
+    }
+    print("};\n");
+
+    print("static const uint32_t serial_password_hash[] = {");
+    for(int i=0; i < 64; i += 4){
+        uint32_t w = (uint32_t) hash_buffer[i] | ((uint32_t) hash_buffer[i + 1] << 8) | ((uint32_t) hash_buffer[i + 2] << 16) | ((uint32_t) hash_buffer[i + 3] << 24);
+        print("0x");
+        ede_puthex(putchar, w, 32);
+        if(i < 60) print(",");
+    }
+    print("};\n");
+}
+
+void password_prompt(){
+    uint8_t hash_buffer[64];
+    uint8_t password_buffer[65 + SERIAL_PASSWORD_SALT_BYTES]; // +1 for the NUL that ede_getstring_placeholder writes at offset maxlen
+    uint16_t entered_len;
+
+    while(1){
+        // Initialize the password buffer with the salt
+        memcpy(password_buffer, serial_password_salt, SERIAL_PASSWORD_SALT_BYTES);
+
+        print("Serial Password: ");
+
+        // Have the user enter the password into the buffer, after the salt
+        entered_len = ede_getstring_placeholder(getchar, putchar_raw, password_buffer + SERIAL_PASSWORD_SALT_BYTES, 64, '*');
+
+        // Hash the buffer, including the salt, up to the end of the password the user typed
+        crypto_hash_sha512(hash_buffer, password_buffer, entered_len + SERIAL_PASSWORD_SALT_BYTES);
+        if(crypto_verify_64(hash_buffer, (const uint8_t *) serial_password_hash) == 0) break;
+    }
+}
+
+// (addr len -- )
+void hash_mem(edei32 *s, edeu16 *sp, volatile uint8_t* base, uint32_t window_size){
+    if(*sp < 2){
+        print("Must provide parameters\n");
+        return;
+    }
+    uint32_t addr = (uint32_t) s[*sp - 2];
+    uint32_t len  = (uint32_t) s[*sp - 1];
+    *sp = *sp - 2;
+    // Reading past the end of the memory-mapped window hits unmapped space
+    // and hangs the core, so bound-check before touching `base`.
+    if(addr >= window_size || len > window_size - addr){
+        print("Out of window\n");
+        return;
+    }
+    uint8_t hash_buffer[64];
+    volatile uint8_t* start = base + addr;
+
+    // crypto_hash_sha512 takes a non-volatile pointer. The cast is safe: the
+    // hash reads each byte of the region exactly once, in order, and nothing
+    // writes to the region meanwhile.
+    crypto_hash_sha512(hash_buffer, (const uint8_t *) start, (uint64_t) len);
+
+    for(int i=0; i<64; i++){
+        print_hex(hash_buffer[i], 2);
+    }
+
+    print(" ");
+}
+
+void hash_hspi(edei32 *s, edeu16 *sp){
+    // The window only works in MEMIO mode; manual mode is sticky after
+    // any flashio worker call, so enable it explicitly here.
+    spi_memio_enable(HSPI_CTL_ADDR);
+    hash_mem(s, sp, (volatile uint8_t*) HSPI_BASE_ADDR, FLASH_WINDOW_SIZE);
+}
+
+void hash_cspi(edei32 *s, edeu16 *sp){
+    // The window only works in MEMIO mode; manual mode is sticky after
+    // any flashio worker call, so enable it explicitly here.
+    spi_memio_enable(CSPI_CTL_ADDR);
+    hash_mem(s, sp, (volatile uint8_t*) CSPI_BASE_ADDR, FLASH_WINDOW_SIZE);
+}
+
+void picosoc_benchmark_wrapper(){
+    cmd_benchmark(1, 0);
+}
+
+void help(edei32 *s, edeu16 *sp){
+    (void) s; // help takes no stack parameters
+    (void) sp;
+	print("help - print this help\n"
+          "cfstat - print Configuration Flash controller status\n"
+          "cfid - print Configuration Flash IDs\n"
+          "cfcfg - set Configuration Flash controller config register (value -- )\n"
+          "cfdump - dump Configuration Flash data (addr len -- )\n"
+          "cfwrite - write to Configuration Flash ( d0 ... dn addr len -- )\n"
+          "cfsr - print Configuration Flash Status Registers \n"
+          "cfhash - SHA-512 hash Configuration Flash region (addr len -- )\n"
+          "hfstat - print Host Flash controller status\n"
+          "hfid - print Host Flash IDs\n"
+          "hfcfg - set Host Flash controller config register (value -- )\n"
+          "hfdump - dump Host Flash region (addr len -- )\n"
+          "hfwrite - write to Host Flash ( d0 ... dn addr len -- )\n"
+          "hfsr - print Host Flash Status Registers\n"
+          "hfchiperase - erase Host Flash (danger!)\n"
+          "hfhash - SHA-512 hash Host Flash region (addr len -- )\n"
+          "romdump - dump Boot ROM (addr len -- )\n"
+          "rng - print up to 256 whitened random bytes plus TRNG stats (n -- )\n"
+          "ferr - dump UART Frame Error detection counter\n"
+          "genpw - generate new password and salt configuration for flashkeeper_config.h\n"
+          "benchmark - Run the PicoSoC CPU benchmark\n"
+          "serprog - enter serprog mode\n"
+          "\nThis shell has a Forth-like parameter stack - type .s to show its contents.\n"
+          "Stack manipulation words (drop, swap, dup, over, rot), arithmetic words\n"
+          "(+, -, *, /, /mod, mod), and basic output (., emit) are supported.\n");
+}
+
+void start_shell(){
+    reg_uart_clkdiv = 10; // 1 Mbaud
+
+	print("\n\nWelcome to Flashkeeper\n");
+
+    ede_registerfn("help", help);
+
+    // Configuration Flash controller commands
+    ede_registerfn("cfstat", cmd_print_spi_state);
+    ede_registerfn("cfid", cmd_read_flash_id);
+    ede_registerfn("cfcfg", config_cspi);
+    ede_registerfn("cfdump", dump_cspi);
+    ede_registerfn("cfwrite", write_cspi);
+    ede_registerfn("cfsr", cspi_print_sr);
+    // cfchiperase is deliberately ommitted, as it would very directly entail "please brick immediately"
+    ede_registerfn("cfhash", hash_cspi);
+
+    // Host Flash controller commands
+    ede_registerfn("hfstat", hspi_print_spi_state);
+    ede_registerfn("hfid", hspi_read_flash_id);
+    ede_registerfn("hfcfg", config_hspi);
+    ede_registerfn("hfdump", dump_hspi);
+    ede_registerfn("hfwrite", write_hspi);
+    ede_registerfn("hfsr", hspi_print_sr);
+    ede_registerfn("hfchiperase", hspi_chip_erase);
+    ede_registerfn("hfhash", hash_hspi);
+
+    // Boot ROM commands
+    ede_registerfn("romdump", dump_brom);
+
+    // System test commands
+    ede_registerfn("rng", cmd_rng);
+    ede_registerfn("ferr", cmd_ferr);
+    ede_registerfn("benchmark", picosoc_benchmark_wrapper);
+
+    // Configuration helpers
+    ede_registerfn("genpw", generate_password);
+
+    // Non-EDE modes
+    ede_registerfn("serprog", serprog_command_loop);
+
+    while(1){
+        if(SERIAL_REQUIRE_PASSWORD){
+            password_prompt();
+        }else{
+            print("WARNING! Serial password is disabled. Anyone can reconfigure this Flashkeeper.\n");
+        }
+        print("\n");
+
+        print("Starting debug shell (Forth-like syntax - type help for help)...\n");
+
+        ede_shell(getchar, putchar_raw);
+    }
+}
+
+void main(){
+    // for now, just start the shell at boot
+    start_shell();
 }

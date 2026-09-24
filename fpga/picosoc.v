@@ -67,7 +67,25 @@ module picosoc (
 	input  flash_io0_di,
 	input  flash_io1_di,
 	input  flash_io2_di,
-	input  flash_io3_di
+	input  flash_io3_di,
+
+	output hspi_csb,
+	output hspi_clk,
+
+	output hspi_io0_oe,
+	output hspi_io1_oe,
+	output hspi_io2_oe,
+	output hspi_io3_oe,
+
+	output hspi_io0_do,
+	output hspi_io1_do,
+	output hspi_io2_do,
+	output hspi_io3_do,
+
+	input  hspi_io0_di,
+	input  hspi_io1_di,
+	input  hspi_io2_di,
+	input  hspi_io3_di
 );
 	parameter [0:0] BARREL_SHIFTER = 1;
 	parameter [0:0] ENABLE_MUL = 1;
@@ -106,10 +124,29 @@ module picosoc (
 	wire spimem_ready;
 	wire [31:0] spimem_rdata;
 
+	wire hspi_ready;
+	wire [31:0] hspi_rdata;
+
 	reg ram_ready;
 	wire [31:0] ram_rdata;
 
-	assign iomem_valid = mem_valid && (mem_addr[31:24] > 8'h 01);
+	// EBR ROM window: 0x06000000..0x06001FFF (8 kB, 2048 x 32-bit words).
+	// Preloaded from the bitstream (will host the no-XIP boot ROM).
+	// 16 MB slot, following the existing pattern: 0x04xxxxxx = host flash,
+	// 0x06xxxxxx = EBR ROM, 0x08xxxxxx = GPIO. Does not touch the spimemio
+	// XIP window, so the whole onboard flash stays accessible.
+	wire ebrrom_sel = mem_valid && (mem_addr >= 32'h 0600_0000) && (mem_addr < 32'h 0600_2000);
+	reg ebrrom_ready;
+	wire [31:0] ebrrom_rdata;
+
+	// RNG data register: 0x07000200 (see rng.v). Read-only, one bit in
+	// bit0. Each read returns the current random bit and shifts in a
+	// fresh sample for the next read (read-to-shift), so the firmware's
+	// read rate is the sampling rate.
+	wire        rng_reg_dat_sel = mem_valid && (mem_addr == 32'h 0700_0200);
+	wire [31:0] rng_reg_dat_do;
+
+	assign iomem_valid = mem_valid && (mem_addr[31:24] >= 8'h 04);
 	assign iomem_wstrb = mem_wstrb;
 	assign iomem_addr = mem_addr;
 	assign iomem_wdata = mem_wdata;
@@ -117,19 +154,54 @@ module picosoc (
 	wire spimemio_cfgreg_sel = mem_valid && (mem_addr == 32'h 0200_0000);
 	wire [31:0] spimemio_cfgreg_do;
 
-	wire        simpleuart_reg_div_sel = mem_valid && (mem_addr == 32'h 0200_0004);
-	wire [31:0] simpleuart_reg_div_do;
+	wire hspi_cfgreg_sel = mem_valid && (mem_addr == 32'h 0500_0000);
+	wire [31:0] hspi_cfgreg_do;
 
-	wire        simpleuart_reg_dat_sel = mem_valid && (mem_addr == 32'h 0200_0008);
-	wire [31:0] simpleuart_reg_dat_do;
-	wire        simpleuart_reg_dat_wait;
+	// Window reads while the controller is in manual mode (config_en=0):
+	// the FSM is held in softreset and can never assert ready, so serve 0s
+	// instead of stalling the CPU forever. (Window reads require
+	// spi_memio_enable() first; manual mode is sticky after flashio calls.)
+	wire cspi_win_off = mem_valid && (mem_addr >= 32'h 0100_0000) && (mem_addr < 32'h 0200_0000) && !spimemio_cfgreg_do[31];
+	wire hspi_win_off = mem_valid && (mem_addr >= 32'h 0400_0000) && (mem_addr < 32'h 0500_0000) && !hspi_cfgreg_do[31];
 
-	assign mem_ready = (iomem_valid && iomem_ready) || spimem_ready || ram_ready || spimemio_cfgreg_sel ||
-			simpleuart_reg_div_sel || (simpleuart_reg_dat_sel && !simpleuart_reg_dat_wait);
+	wire        uart_reg_div_sel = mem_valid && (mem_addr == 32'h 0200_0004);
+	wire [31:0] uart_reg_div_do;
 
-	assign mem_rdata = (iomem_valid && iomem_ready) ? iomem_rdata : spimem_ready ? spimem_rdata : ram_ready ? ram_rdata :
-			spimemio_cfgreg_sel ? spimemio_cfgreg_do : simpleuart_reg_div_sel ? simpleuart_reg_div_do :
-			simpleuart_reg_dat_sel ? simpleuart_reg_dat_do : 32'h 0000_0000;
+	wire        uart_reg_dat_sel = mem_valid && (mem_addr == 32'h 0200_0008);
+	wire [31:0] uart_reg_dat_do;
+	wire        uart_reg_dat_wait;
+
+	wire        uart_reg_sts_sel = mem_valid && (mem_addr == 32'h 0200_000C);
+	wire [31:0] uart_reg_sts_do;
+
+	assign mem_ready = (iomem_valid && iomem_ready) ||
+			cspi_win_off ||
+			hspi_win_off ||
+			spimem_ready ||
+			spimemio_cfgreg_sel ||
+			hspi_ready ||
+			hspi_cfgreg_sel ||
+			ram_ready ||
+			ebrrom_ready ||
+			rng_reg_dat_sel ||
+			uart_reg_div_sel || 
+			(uart_reg_dat_sel && !uart_reg_dat_wait) ||
+			uart_reg_sts_sel;
+
+	assign mem_rdata = (iomem_valid && iomem_ready) ? iomem_rdata : 
+			cspi_win_off ? 32'h 0000_0000 :
+			hspi_win_off ? 32'h 0000_0000 :
+			spimem_ready ? spimem_rdata :
+			spimemio_cfgreg_sel ? spimemio_cfgreg_do :
+			hspi_ready ? hspi_rdata :
+			hspi_cfgreg_sel ? hspi_cfgreg_do :
+			ram_ready ? ram_rdata :
+			ebrrom_ready ? ebrrom_rdata :
+			rng_reg_dat_sel ? rng_reg_dat_do :
+			uart_reg_div_sel ? uart_reg_div_do :
+			uart_reg_dat_sel ? uart_reg_dat_do :
+			uart_reg_sts_sel ? uart_reg_sts_do :
+			32'h 0000_0000;
 
 	picorv32 #(
 		.STACKADDR(STACKADDR),
@@ -156,10 +228,41 @@ module picosoc (
 		.irq         (irq        )
 	);
 
+	spimemio host_spi (
+        .clk    (clk),
+        .resetn (resetn),
+        .valid  (mem_valid && mem_addr >= 32'h 0400_0000 && mem_addr < 32'h 0500_0000),
+        .ready  (hspi_ready),
+        .addr   (mem_addr[23:0]),
+        .rdata  (hspi_rdata),
+
+        .flash_csb    (hspi_csb),
+        .flash_clk    (hspi_clk),
+
+        .flash_io0_oe (hspi_io0_oe),
+        .flash_io1_oe (hspi_io1_oe),
+        .flash_io2_oe (hspi_io2_oe),
+        .flash_io3_oe (hspi_io3_oe),
+
+        .flash_io0_do (hspi_io0_do),
+        .flash_io1_do (hspi_io1_do),
+        .flash_io2_do (hspi_io2_do),
+        .flash_io3_do (hspi_io3_do),
+
+        .flash_io0_di (hspi_io0_di),
+        .flash_io1_di (hspi_io1_di),
+        .flash_io2_di (hspi_io2_di),
+        .flash_io3_di (hspi_io3_di),
+
+        .cfgreg_we(hspi_cfgreg_sel ? mem_wstrb : 4'b0000),
+        .cfgreg_di(mem_wdata),
+        .cfgreg_do(hspi_cfgreg_do)
+    );
+
 	spimemio spimemio (
 		.clk    (clk),
 		.resetn (resetn),
-		.valid  (mem_valid && mem_addr >= 4*MEM_WORDS && mem_addr < 32'h 0200_0000),
+		.valid  (mem_valid && mem_addr >= 32'h 0100_0000 && mem_addr < 32'h 0200_0000),
 		.ready  (spimem_ready),
 		.addr   (mem_addr[23:0]),
 		.rdata  (spimem_rdata),
@@ -187,23 +290,45 @@ module picosoc (
 		.cfgreg_do(spimemio_cfgreg_do)
 	);
 
-	simpleuart simpleuart (
+	uart uart (
 		.clk         (clk         ),
 		.resetn      (resetn      ),
 
 		.ser_tx      (ser_tx      ),
 		.ser_rx      (ser_rx      ),
 
-		.reg_div_we  (simpleuart_reg_div_sel ? mem_wstrb : 4'b 0000),
+		.reg_div_we  (uart_reg_div_sel ? mem_wstrb : 4'b 0000),
 		.reg_div_di  (mem_wdata),
-		.reg_div_do  (simpleuart_reg_div_do),
+		.reg_div_do  (uart_reg_div_do),
 
-		.reg_dat_we  (simpleuart_reg_dat_sel ? mem_wstrb[0] : 1'b 0),
-		.reg_dat_re  (simpleuart_reg_dat_sel && !mem_wstrb),
+		.reg_dat_we  (uart_reg_dat_sel ? mem_wstrb[0] : 1'b 0),
+		.reg_dat_re  (uart_reg_dat_sel && !mem_wstrb),
 		.reg_dat_di  (mem_wdata),
-		.reg_dat_do  (simpleuart_reg_dat_do),
-		.reg_dat_wait(simpleuart_reg_dat_wait)
+		.reg_dat_do  (uart_reg_dat_do),
+		.reg_dat_wait(uart_reg_dat_wait),
+
+		.reg_sts_we  (uart_reg_sts_sel ? mem_wstrb[0] : 1'b 0),
+		.reg_sts_di  (mem_wdata),
+		.reg_sts_do  (uart_reg_sts_do)
 	);
+
+	rng rng_inst (
+		.clk(clk),
+		.resetn(resetn),
+		.re(rng_reg_dat_sel && !mem_wstrb),
+		.rdata(rng_reg_dat_do)
+	);
+
+	ebrrom ebrrom_inst (
+		.clk(clk),
+		.addr(mem_addr[12:2]),
+		.rdata(ebrrom_rdata)
+	);
+
+	// One-cycle latency read, like the SPRAM: the EBR samples the address
+	// at the rising edge and drives rdata on the following cycle.
+	always @(posedge clk)
+		ebrrom_ready <= mem_valid && !mem_ready && ebrrom_sel;
 
 	always @(posedge clk)
 		ram_ready <= mem_valid && !mem_ready && mem_addr < 4*MEM_WORDS;

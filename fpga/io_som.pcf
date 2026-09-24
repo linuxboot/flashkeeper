@@ -1,12 +1,20 @@
 # UART on DTX/DRX pins
-set_io ser_rx      A1
-set_io ser_tx      B1
+set_io ser_rx     C5  # SOM GPIO2 - Debug UART RX
+set_io ser_tx     B1  # SOM DTX - Debug UART TX
 
 # SPI Flash
-set_io flash_clk  D1
-set_io flash_csb  C1
-set_io flash_io0  F1
-set_io flash_io1  E1
+set_io flash_clk  D1  # Onboard SPI SCK
+set_io flash_csb  C1  # Onboard SPI CS
+set_io flash_io0  F1  # Onboard SPI MOSI
+set_io flash_io1  E1  # Onboard SPI MISO
+
+# reserved: 4-line SPI not brought out on the SoM (see top.v port list)
+#set_io hspi_io2   B5  # SOM GPIO1 - host SPI IO2/WP (optional)
+#set_io hspi_io3   F5  # SOM GPIO5 - host SPI IO3/HOLD (optional)
+set_io hspi_io1   A5  # SOM GPIO0 - host SPI MISO
+set_io hspi_io0   E5  # SOM GPIO3 - host SPI MOSI
+set_io hspi_clk   D5  # SOM GPIO4 - host SPI CLK
+set_io hspi_csb   A1  # SOM DRX - host SPI CS
 
 # LED indicator (reused CDONE pin)
-set_io led_n     D3
+set_io led_n      D3  # Debug LED

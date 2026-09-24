@@ -32,7 +32,14 @@ module top (
 	output flash_csb,
 	output flash_clk,
 	inout  flash_io0,
-	inout  flash_io1
+	inout  flash_io1,
+
+	output hspi_csb,
+	output hspi_clk,
+	output  hspi_io0,
+	input  hspi_io1,
+	//inout  hspi_io2, // reserved
+	//inout  hspi_io3 // reserved
 );
 	wire clk;
 	parameter integer MEM_WORDS = 32768;
@@ -47,12 +54,16 @@ module top (
 	wire flash_io0_oe, flash_io0_do, flash_io0_di;
 	wire flash_io1_oe, flash_io1_do, flash_io1_di;
 
+	wire hspi_io0_oe, hspi_io0_do, hspi_io0_di;
+	wire hspi_io1_oe, hspi_io1_do, hspi_io1_di;
+
 	SB_HFOSC #(.CLKHF_DIV("0b10")) hfosc ( // 0b10 = divide down to 12 MHz
 		.CLKHFPU(1'b1),
 		.CLKHFEN(1'b1),
 		.CLKHF(clk)
 	);
 
+	// I/O for onboard SPI flash
 	SB_IO #(
 		.PIN_TYPE(6'b 1010_01),
 		.PULLUP(1'b 0)
@@ -63,31 +74,65 @@ module top (
 		.D_IN_0({flash_io1_di, flash_io0_di})
 	);
 
+    // IO for host SPI
+    SB_IO #(
+		.PIN_TYPE(6'b 1010_01),
+		.PULLUP(1'b 0)
+	) hspi_io_buf (
+        .PACKAGE_PIN({hspi_io0}),
+        .OUTPUT_ENABLE({hspi_io0_oe}),
+        .D_OUT_0({hspi_io0_do}),
+        .D_IN_0({hspi_io0_di})
+    );
+
+	SB_IO #(
+		.PIN_TYPE(6'b000001),
+		.NEG_TRIGGER(1'b0)
+	) mosi_in_driver (
+		.PACKAGE_PIN(hspi_io1),
+		.D_IN_0(hspi_io1_di)
+	);
+
 	wire        iomem_valid;
-	reg         iomem_ready;
-	wire [3:0]  iomem_wstrb;
-	wire [31:0] iomem_addr;
-	wire [31:0] iomem_wdata;
-	reg  [31:0] iomem_rdata;
+    wire        iomem_ready;
+    wire [3:0]  iomem_wstrb;
+    wire [31:0] iomem_addr;
+    wire [31:0] iomem_wdata;
+    wire [31:0] iomem_rdata;
 
-	reg [31:0] gpio;
-	assign led_n = !gpio[0];
+    // Internal peripheral signals
+    wire        gpio_ready;
+    reg  [31:0] gpio_rdata;
 
-	always @(posedge clk) begin
-		if (!resetn) begin
-			gpio <= 0;
-		end else begin
-			iomem_ready <= 0;
-			if (iomem_valid && !iomem_ready && iomem_addr[31:24] == 8'h 03) begin
-				iomem_ready <= 1;
-				iomem_rdata <= gpio;
-				if (iomem_wstrb[0]) gpio[ 7: 0] <= iomem_wdata[ 7: 0];
-				if (iomem_wstrb[1]) gpio[15: 8] <= iomem_wdata[15: 8];
-				if (iomem_wstrb[2]) gpio[23:16] <= iomem_wdata[23:16];
-				if (iomem_wstrb[3]) gpio[31:24] <= iomem_wdata[31:24];
-			end
-		end
-	end
+    reg [31:0] gpio;
+    assign led_n = !gpio[0];
+
+    // GPIO Peripheral Logic
+    reg gpio_ack;
+    always @(posedge clk) begin
+        if (!resetn) begin
+            gpio <= 0;
+            gpio_rdata <= 0;
+            gpio_ack <= 0;
+        end else begin
+            // Acknowledge transaction when valid and addressing GPIO space (0x08xxxxxx)
+            gpio_ack <= iomem_valid && !iomem_ready && iomem_addr[31:24] == 8'h08;
+            
+            if (gpio_ack) begin
+                gpio_rdata <= gpio;
+                if (iomem_wstrb[0]) gpio[ 7: 0] <= iomem_wdata[ 7: 0];
+                if (iomem_wstrb[1]) gpio[15: 8] <= iomem_wdata[15: 8];
+                if (iomem_wstrb[2]) gpio[23:16] <= iomem_wdata[23:16];
+                if (iomem_wstrb[3]) gpio[31:24] <= iomem_wdata[31:24];
+            end
+        end
+    end
+    assign gpio_ready = gpio_ack;
+
+    // Bus Multiplexing (matches PicoSoC internal style)
+    assign iomem_ready = gpio_ready;
+    assign iomem_rdata = gpio_ready      ? gpio_rdata :
+                      32'h0000_0000;
 
 	picosoc #(
 		.BARREL_SHIFTER(1),
@@ -95,7 +140,7 @@ module top (
 		.ENABLE_DIV(0),
 		.ENABLE_FAST_MUL(1),
 		.MEM_WORDS(MEM_WORDS),
-		.PROGADDR_RESET(32'h 0002_0000)  // The default reset vector at 1M does not fit within the 512 kB flash chip
+		.PROGADDR_RESET(32'h 0600_0000)  // The boot ROM in the EBR (window 0x06000000, see ebrrom.v); it loads the firmware from the SPI flash into the SPRAM and jumps to it
 	) soc (
 		.clk          (clk         ),
 		.resetn       (resetn      ),
@@ -114,6 +159,18 @@ module top (
 
 		.flash_io0_di (flash_io0_di),
 		.flash_io1_di (flash_io1_di),
+
+		.hspi_csb    (hspi_csb   ),
+		.hspi_clk    (hspi_clk   ),
+
+		.hspi_io0_oe (hspi_io0_oe),
+		.hspi_io1_oe (hspi_io1_oe),
+
+		.hspi_io0_do (hspi_io0_do),
+		.hspi_io1_do (hspi_io1_do),
+
+		.hspi_io0_di (hspi_io0_di),
+		.hspi_io1_di (hspi_io1_di),
 
 		.irq_5        (1'b0        ),
 		.irq_6        (1'b0        ),

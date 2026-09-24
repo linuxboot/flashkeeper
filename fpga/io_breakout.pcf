@@ -1,15 +1,29 @@
-# 12 MHz clock
-set_io ftdi_clk        35
+# iCE40UP5K-B-EVN (Lattice iCE40 UltraPlus Breakout Board, FPGA-UG-02001).
+# Package pin numbers per the iCE40UP5K SG48 pin map (iCE40 UltraPlus data
+# sheet, section 5.1); board headers per the EVN schematic:
+#   J2  "HEADER B"    bank 0 general I/O - UART and host SPI
+#   J3  "HEADER C"    bank 1/2 general I/O (unused)
+#   J52 "HEADER A"    onboard flash SPI + RGB LEDs (unused)
+#   U6  "PMOD SOCKET" onboard flash SPI and UART passthrough (unused)
 
-# UART on PMOD header
-set_io ser_rx      26
-set_io ser_tx      27
+# UART on J2 (HEADER B)
+set_io ser_rx      26  # IOT_39A
+set_io ser_tx      27  # IOT_38B
 
-# SPI Flash
-set_io flash_clk  15
-set_io flash_csb  16
-set_io flash_io0  14
-set_io flash_io1  17
+# Onboard SPI flash (N25Q032A1, 4 MB). SCK/SS are the package's dedicated
+# SPI pins. SPI_SI/SPI_SO are named from the FPGA's perspective: SPI_SO is
+# the FPGA's serial OUT (MOSI, into the flash), SPI_SI is the FPGA's serial
+# IN (MISO, from the flash). This mapping is the one XIP worked with.
+set_io flash_clk  15  # IOB_34A_SPI_SCK
+set_io flash_csb  16  # IOB_35B_SPI_SS
+set_io flash_io0  14  # IOB_32A_SPI_SO (MOSI)
+set_io flash_io1  17  # IOB_33B_SPI_SI (MISO)
 
-# LED indicator (RGB LED blue)
-set_io led_n     39
+# Host SPI on the J2 (HEADER B) right-hand column (physically grouped)
+set_io hspi_csb   36  # IOB_48B
+set_io hspi_clk   42  # IOB_51A
+set_io hspi_io0   38  # IOB_50B (MOSI)
+set_io hspi_io1   28  # IOB_41A (MISO)
+
+# LED indicator: RGB0 drives the blue LED (via R95)
+set_io led_n      39  # RGB0
