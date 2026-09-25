@@ -31,6 +31,9 @@
     .balign 4
     .globl fw_entry
 fw_entry:
+    /* Initialize sp to top of the 128 kB SPRAM */
+    li   sp, 0x20000
+
     /* Zero the .bss/heap/stack region [_edata, _eram): the boot ROM
        does not know the firmware size, so the firmware finishes its
        own startup (same scheme as the init_ram the old XIP stub

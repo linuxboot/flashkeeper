@@ -182,7 +182,7 @@ void write_spi(edei32 *s, edeu16 *sp, uint32_t reg_addr){
     uint32_t cmd = ((uint32_t) SPI_CMD_PP << 24) | flash_addr; // assemble a 32-bit write command (02h + 24-bit address)
 
     // Call flashio_call directly to use the prebuffer
-    flashio_call((uint8_t*) (s + (4 * (*sp - cells))), len, SPI_CMD_WE, reg_addr, cmd);
+    flashio_call((uint8_t*) (s + (*sp - cells)), len, SPI_CMD_WE, reg_addr, cmd);
 
     spi_wait_busy(reg_addr);
 

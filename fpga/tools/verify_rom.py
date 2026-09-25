@@ -68,23 +68,29 @@ def main():
         s.dtr = True
         s.reset_input_buffer()
 
-    if args.password is not None:
-        buf, seen = read_until(s, b'Serial Password:', LOGIN_TIMEOUT)
-        if not seen:
-            sys.exit(f"FAIL: no 'Serial Password:' prompt within {LOGIN_TIMEOUT:.0f}s "
-                     f"(is the password gate enabled? is the SoM responsive?)\n"
-                     f"got: {buf.decode('ascii', 'replace')!r}")
+    # The "Serial Password:" prompt is only printed once per boot, so a
+    # console that booted earlier may be sitting silently at it. Probe with
+    # a CR: an active password prompt re-prints, a live EDE shell answers
+    # with its "00>" prompt, a dead console answers with nothing.
+    s.reset_input_buffer()
+    s.write(b'\r')
+    buf, live = read_until(s, b'Serial Password:', 3.0)
+    if not live and b'00>' not in buf:
+        sys.exit(f"FAIL: no live console session (neither 'Serial Password:' nor "
+                 f"the EDE prompt answered a CR; is the SoM booted?)\n"
+                 f"rerun with --reset to force a fresh boot\n"
+                 f"got: {buf.decode('ascii', 'replace')!r}")
+
+    if b'Serial Password:' in buf:
+        if args.password is None:
+            sys.exit("FAIL: the console is asking for a password; rerun with --password")
         s.reset_input_buffer()
         s.write(args.password.encode() + b'\r')
         buf, seen = read_until(s, b'Starting debug shell', LOGIN_TIMEOUT)
         if not seen:
             sys.exit(f"FAIL: no 'Starting debug shell' banner after login (bad password?)\n"
                      f"got: {buf.decode('ascii', 'replace')!r}")
-    else:
-        # No password given: bail out with a clear error if the gate is active.
-        buf, seen = read_until(s, b'Serial Password:', 3.0)
-        if seen:
-            sys.exit("FAIL: the console is asking for a password; rerun with --password")
+    # else: already at the EDE prompt from a previous session - proceed.
 
     s.reset_input_buffer()
     s.write(b'\r')  # get a prompt

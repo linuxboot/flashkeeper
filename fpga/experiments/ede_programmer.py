@@ -4,6 +4,8 @@ EDE Shell SPI Programmer
 
 Experimental. An alternative way to flash firmware via the Flashkeeper FPGA by directly driving
 the EDE shell's host flash commands (in most cases, serprog mode is preferable).
+
+If the FPGA has a serial password set, log in to the shell before running this.
 """
 
 import sys
@@ -188,12 +190,12 @@ def verify_page(ser, addr, data_bytes):
     # IMPORTANT: Length and Address must be in HEX
     hex_len = f'0x{length:02x}'
     hex_addr = f'0x{addr:06x}'
-    read_cmd = f'{hex_addr} {hex_len} hfread'
+    read_cmd = f'{hex_addr} {hex_len} hfdump'
     
     response = send_line(ser, read_cmd)
     
     if not check_response(response):
-        print(f"  ERROR: hfread failed.")
+        print(f"  ERROR: hfdump failed.")
         return False
     
     read_bytes = parse_hex_bytes(response)
