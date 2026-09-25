@@ -5122,7 +5122,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "flashkeeper:SolderConnector_SOIC8Wide"
+		(property "Footprint" "flashkeeper:SolderConnector_SOIC8Wide_1.5mmLift"
 			(at 236.22 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -5884,7 +5884,7 @@
 				)
 			)
 		)
-		(property "Footprint" "flashkeeper:FlashkeeperFPGASoM"
+		(property "Footprint" "flashkeeper:FlashkeeperFPGASoM_ReducedPins"
 			(at 179.07 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -6425,7 +6425,7 @@
 		)
 	)
 	(symbol
-		(lib_id "power:VCC")
+		(lib_id "power:+2V5")
 		(at 92.71 78.74 0)
 		(unit 1)
 		(body_style 1)
@@ -6434,9 +6434,8 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "ee2c02f1-a8df-4712-b245-2d175af8db28")
-		(property "Reference" "#PWR010"
+		(uuid "eee691c0-8e25-4a69-b3e8-90b5bc974e77")
+		(property "Reference" "#PWR014"
 			(at 92.71 82.55 0)
 			(hide yes)
 			(show_name no)
@@ -6447,8 +6446,8 @@
 				)
 			)
 		)
-		(property "Value" "VCC"
-			(at 92.71 74.6069 0)
+		(property "Value" "+2V5"
+			(at 92.71 74.676 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6479,7 +6478,7 @@
 				)
 			)
 		)
-		(property "Description" "Power symbol creates a global label with name \"VCC\""
+		(property "Description" "Power symbol creates a global label with name \"+2V5\""
 			(at 92.71 78.74 0)
 			(hide yes)
 			(show_name no)
@@ -6491,12 +6490,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "245dbec0-4faa-4779-8617-d380d59b0fd2")
+			(uuid "b205990b-4071-4eb7-978d-4ce08686c33d")
 		)
 		(instances
 			(project "adapter_soldered"
 				(path "/44cdec2e-7ad1-4d15-a8ec-478a4c576cd0"
-					(reference "#PWR010")
+					(reference "#PWR014")
 					(unit 1)
 				)
 			)

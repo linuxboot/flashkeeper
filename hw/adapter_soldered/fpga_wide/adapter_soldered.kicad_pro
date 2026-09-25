@@ -39,9 +39,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 0.762,
-          "height": 1.524,
-          "width": 1.524
+          "drill": 0.0,
+          "height": 0.8,
+          "width": 0.3
         },
         "silk_line_width": 0.1,
         "silk_text_italic": false,
@@ -76,7 +76,40 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        [
+          "annular_width|139605000|106840000|21ba967b-44d9-4793-9f85-0dd059b7fc73|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "annular_width|139605000|108110000|26f146ff-e1ea-4d8d-8516-da271343ad70|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "annular_width|139605000|109380000|714b5863-b29b-4285-8f85-859b457fc9a7|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "annular_width|139605000|110650000|b6373035-00d7-4091-88b6-3dfa12b7240a|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "annular_width|151105000|106840000|36246c05-4360-4986-957c-fcb33dbf6c2d|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "annular_width|151105000|108110000|abcaa005-b842-4bf2-9c81-47ac56fe0993|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "annular_width|151105000|109380000|c4c8853c-8295-4f24-9f4b-d710fa6e4139|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "annular_width|151105000|110650000|f602498b-9509-437f-9908-62598d46c837|00000000-0000-0000-0000-000000000000",
+          ""
+        ]
+      ],
       "meta": {
         "version": 2
       },
@@ -86,7 +119,7 @@
         "connection_width": "warning",
         "copper_edge_clearance": "error",
         "copper_sliver": "warning",
-        "courtyards_overlap": "error",
+        "courtyards_overlap": "warning",
         "creepage": "error",
         "diff_pair_gap_out_of_range": "error",
         "diff_pair_uncoupled_length_too_long": "error",
