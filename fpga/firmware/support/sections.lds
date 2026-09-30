@@ -3,6 +3,7 @@ MEMORY
     FLASH (rx) : ORIGIN = 0x00020000, LENGTH = 0x60000
     RAM (xrw) : ORIGIN = 0x00000000, LENGTH = 0x20000
 }
+ENTRY(fw_entry)
 SECTIONS {
     /* 256-byte image header (RAM 0x0, flash byte 128 kB): magic +
        total size, written by tools/mkflashimg.py, read by the boot ROM
@@ -73,4 +74,22 @@ SECTIONS {
     } >RAM
 
     _eram        = ORIGIN(RAM) + LENGTH(RAM);
+
+    /* Minimum stack space to guarantee: the region [_ebss, _estack) must
+       never shrink below this as image+bss grow. SP starts at _estack
+       (entry.s) and may use the whole region; this is a floor, not a cap.
+       (ASSERT is a top-level command in this binutils: it must sit
+       outside the SECTIONS block, hence below it.) */
+    MIN_STACK_SPACE = 8192;
+    _estack = ORIGIN(RAM) + LENGTH(RAM);
+
+    /* fwsiglib is loaded and verified at [LIB_BASE, ...) at boot. The image
+       proper (code + data + bss, i.e. everything up to the heap start) must
+       end before LIB_BASE; heap growth is untracked and must stay below it
+       too or it corrupts the library. */
+    LIB_BASE = 0x17800;
 }
+ASSERT(_estack - _ebss >= MIN_STACK_SPACE,
+       "stack space below minimum: image+bss too large");
+ASSERT(_heap_start <= LIB_BASE,
+       "image (code+data+bss) collides with the fwsiglib slot at 0x17800");

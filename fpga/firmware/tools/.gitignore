@@ -1,0 +1,3 @@
+# ignore the compiled genkey and sign binaries
+genkey
+sign

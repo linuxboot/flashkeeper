@@ -25,7 +25,10 @@ def main(lo_path, hi_path, src=None):
     else:
         with open(src, 'rb') as f:
             raw = f.read()
-        raw = (raw + b'\x00' * (NWORDS * 4))[:NWORDS * 4]
+        if len(raw) > NWORDS * 4:
+            sys.exit(f"error: {src} is {len(raw)} bytes; the EBR window is "
+                     f"only {NWORDS * 4} bytes")
+        raw = raw + b'\x00' * (NWORDS * 4 - len(raw))
         words = [int.from_bytes(raw[4 * w:4 * w + 4], 'little') for w in range(NWORDS)]
 
     with open(lo_path, 'w') as f:

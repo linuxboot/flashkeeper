@@ -101,8 +101,7 @@ def main(elfpath, outpath):
             f"segment at VMA {p_vaddr:#x}, size {p_filesz:#x} outside [0, {edata:#x})"
         img[p_vaddr:p_vaddr + p_filesz] = data[p_offset:p_offset + p_filesz]
 
-    # The entry point contract: .text (and the entry stub) must sit at
-    # VMA 0x100, right after the 256-byte reserved header.
+    # .text (and the entry stub) must sit at VMA 0x100, right after the 256-byte reserved header.
     stext = None
     for i in range(sh_size // sh_entsize):
         off = sh_offset + i * sh_entsize
@@ -112,7 +111,7 @@ def main(elfpath, outpath):
         name = data[name_start:data.index(b'\x00', name_start)].decode()
         if name == '_stext':
             stext = st_value
-    assert stext == 0x100, f"_stext is {stext:#x}, expected 0x100 (entry contract)"
+    assert stext == 0x100, f"_stext is {stext:#x}, expected 0x100 (entry point from ROM)"
 
     # Write the image header the boot ROM reads: magic + total size.
     assert all(b == 0 for b in img[0:0x100]), \

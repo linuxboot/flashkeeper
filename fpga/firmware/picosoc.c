@@ -269,7 +269,7 @@ uint32_t cmd_benchmark(uint8_t verbose, uint32_t *instns_p)
     __asm__ volatile ("rdcycle %0" : "=r"(cycles_begin));
     __asm__ volatile ("rdinstret %0" : "=r"(instns_begin));
 
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 1024; i++)
     {
         for (int k = 0; k < 256; k++)
         {

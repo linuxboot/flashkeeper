@@ -32,11 +32,31 @@ for firmware changes).
 ## Firmware Features
 - Forth-like Embedded Debug Environment shell (ede.h)
 - Diagnostics and flash device management via serial interface (type help at EDE)
-- Boot-ROM-based firmware loading from flash (rom/)
+- Boot-ROM-based firmware loading and verification from flash (rom/)
 - Cryptography provided by TweetNaCl (tweetnacl.c)
 - Serial password authentication support (main.c - password_prompt, generate_password)
 - flashrom-compatible serprog emulation mode (serprog.c)
 - Software-based entropy extraction and RNG monitoring (rng.c)
+
+## Firmware Signing
+By default, these Makefiles will attempt to generate a signed firmware image, and will enable firmware signature verification in the
+Boot ROM. This requires a keypair to sign your firmware image - you can generate one with:
+```
+make -C firmware tools/genkey
+firmware/tools/genkey firmware/keys/pk.key firmware/keys/sk.key
+```
+After generating your keypair, the build will automatically sign your firmware using your secret key (sk.key), and your built Boot ROM
+will automatically include your public key (pk.key) and use it to verify your signed firmware images at boot.
+
+If you wish to build an *unsigned* firmware image, you can build with `SIGN=0`. By default, the Boot ROM will reject unsigned images - to
+build a Boot ROM allowing unsigned images, also build with `ROM_ALLOW_UNSIGNED=1`. For example, to build an unsigned image and a Boot ROM
+that will accept it, for the Flashkeeper FPGA SoM, you can run:
+```
+make som_image SIGN=0 ROM_ALLOW_UNSIGNED=1
+```
+Of course, a boot ROM built with ROM_ALLOW_UNSIGNED provides **no protection against firmware tampering**, and should be used for development
+only. A ROM_ALLOW_UNSIGNED Boot ROM can still boot signed firmware images (in addition to unsigned ones), and will still attempt to verify
+a firmware image signature if one is present. 
 
 ## Setting a Password
 If you are using a Flashkeeper FPGA in a deployed system, we strongly recommend setting a serial password - if you do not do so,
@@ -63,6 +83,9 @@ Files originating with the PicoRV32 are under the ISC License. They were origina
 spimemio.v, uart.v, and ice40up5k_spram.v have been modified as part of the Flashkeeper project.
 
 memops.S, used for certain RISC-V memory operations, is under the 2-clause BSD license and was developed by Alexander Vysokovskikh.
+
+libsodium ed25519 files used in the boot ed25519 library (rom/lib) are under the ISC license, and are developed by Frank Denis and
+the [libsodium authors](https://raw.githubusercontent.com/jedisct1/libsodium/refs/heads/master/AUTHORS).
 
 tweetnacl.c and tweetnacl.h are a public-domain cryptography library, and were developed by Daniel J. Bernstein,
 Bernard van Gastel, Wesley Janssen, Tanja Lange, Peter Schwabe, and Sjaak Smetsers.

@@ -2,7 +2,8 @@
 #include "serprog.h"
 #include <stdint.h>
 #include "memops.h"
-#include "tweetnacl.h"
+#include "romapi.h" /* SHA-512 in the ROM (fk_rom_hash_*); via romcalls.s */
+#include "tweetnacl.h" /* local tweetnacl functions (crypto_verify_64) */
 #include "rng.h"
 
 #define _EDE_IMPLEMENTATION_
@@ -251,7 +252,7 @@ void generate_password(){
 
     print("New Password: ");
     entered_len = ede_getstring_placeholder(getchar, putchar_raw, password_buffer + SERIAL_PASSWORD_SALT_BYTES, 64, '*');
-    crypto_hash_sha512(hash_buffer, password_buffer, entered_len + SERIAL_PASSWORD_SALT_BYTES);
+    fk_rom_hash_sha512(hash_buffer, password_buffer, entered_len + SERIAL_PASSWORD_SALT_BYTES);
 
     print("static const uint32_t serial_password_salt[] = {");
     for(int i=0; i < SERIAL_PASSWORD_SALT_BYTES; i+=4){
@@ -287,7 +288,7 @@ void password_prompt(){
         entered_len = ede_getstring_placeholder(getchar, putchar_raw, password_buffer + SERIAL_PASSWORD_SALT_BYTES, 64, '*');
 
         // Hash the buffer, including the salt, up to the end of the password the user typed
-        crypto_hash_sha512(hash_buffer, password_buffer, entered_len + SERIAL_PASSWORD_SALT_BYTES);
+        fk_rom_hash_sha512(hash_buffer, password_buffer, entered_len + SERIAL_PASSWORD_SALT_BYTES);
         if(crypto_verify_64(hash_buffer, (const uint8_t *) serial_password_hash) == 0) break;
     }
 }
@@ -310,10 +311,10 @@ void hash_mem(edei32 *s, edeu16 *sp, volatile uint8_t* base, uint32_t window_siz
     uint8_t hash_buffer[64];
     volatile uint8_t* start = base + addr;
 
-    // crypto_hash_sha512 takes a non-volatile pointer. The cast is safe: the
-    // hash reads each byte of the region exactly once, in order, and nothing
-    // writes to the region meanwhile.
-    crypto_hash_sha512(hash_buffer, (const uint8_t *) start, (uint64_t) len);
+    // fk_rom_hash_sha512 takes a non-volatile pointer. The cast is
+    // safe: the hash reads each byte of the region exactly once, in
+    // order, and nothing writes to the region meanwhile.
+    fk_rom_hash_sha512(hash_buffer, (const uint8_t *) start, (uint64_t) len);
 
     for(int i=0; i<64; i++){
         print_hex(hash_buffer[i], 2);

@@ -1,0 +1,22 @@
+These files come from libsodium 1.0.22 (ISC license, https://github.com/jedisct1/libsodium).
+
+Sources (paths in libsodium-1.0.22-RELEASE.tar.gz):
+  src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c
+  src/libsodium/include/sodium/private/ed25519_ref10.h
+  src/libsodium/include/sodium/private/ed25519_ref10_fe_25_5.h
+  src/libsodium/crypto_core/ed25519/ref10/fe_25_5/fe.h
+  src/libsodium/crypto_core/ed25519/ref10/fe_25_5/constants.h
+  src/libsodium/crypto_core/ed25519/ref10/fe_25_5/base.h
+  src/libsodium/crypto_core/ed25519/ref10/fe_25_5/base2.h
+
+The non-upstream files in this directory are:
+  fk_verify.c:
+    Wrapper, called by the ROM
+  inc/{stdlib.h,string.h,utils.h,crypto_verify_32.h,private/common.h}:
+    Shims for freestanding build (only memset/memcpy/abort/sodium_is_zero
+    are used). sodium_is_zero is from upstream utils.c.
+  ref10_stub_impl.c:
+    abort() definition (never reached, the sole abort() call site is in
+    ge25519_elligator2, which is gc-sectioned out)
+  lib.lds:
+    Linker script used for building fwsiglib
