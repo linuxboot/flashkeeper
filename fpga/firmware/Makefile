@@ -29,21 +29,35 @@ build/firmware.bin: build/firmware.elf tools/mkflashimg.py
 	$(PYTHON) tools/mkflashimg.py $< $@
 	chmod -x $@
 
-build/firmware_signed.bin: build/firmware.bin tools/sign keys/sk.key keys/sk.key
+build/firmware_signed.bin: build/firmware.bin tools/sign keys/sk.key
 	tools/sign build/firmware.bin build/firmware_signed.bin keys/sk.key
+	chmod -x $@
 
-# Clear error when the signed image is requested but no keypair exists
+# Error when the signed image is requested but no keypair exists
 # yet (rule with only a recipe, so it only runs when the key is missing).
 keys/sk.key:
 	@echo "error: keys/sk.key not found - generate a keypair first:" >&2
 	@echo "       make tools/genkey && ./tools/genkey keys/pk.key keys/sk.key" >&2
 	@exit 1
 
-build/firmware.elf: $(FIRMWARE_OBJS) support/sections.lds
-	# --no-warn-rwx-segments: the image is intentionally one flat RWX segment
-	# (LMA = VMA + 0x20000, copied as a single block by the boot ROM; there is
-	# no OS to enforce segment permissions - see support/sections.lds).
-	$(TOOLCHAIN_PREFIX)gcc -Os -mabi=ilp32 -march=rv32$(RISCV_EXTENSIONS) -ffreestanding -nostdlib -o $@ -Wl,-Bstatic,-T,support/sections.lds,-Map,build/firmware.map,--strip-debug,--no-warn-rwx-segments,--gc-sections $(FIRMWARE_OBJS) $(LDFLAGS) -lgcc 
+# Error when the public key is missing (see the keys/sk.key rule above).
+keys/pk.key:
+	@echo "error: keys/pk.key not found - generate a keypair first:" >&2
+	@echo "       make tools/genkey && ./tools/genkey keys/pk.key keys/sk.key" >&2
+	@exit 1
+
+check: build/firmware_signed.bin tools/vtest keys/pk.key
+	tools/vtest build/firmware_signed.bin keys/pk.key
+
+# The linker script is preprocessed (cc -E -P -x c): ld's own preprocessor
+# does not support #define (see the note in support/sections.lds).
+build/sections.lds.pp: support/sections.lds ../memmap.h
+	cc -E -P -x c support/sections.lds > $@
+
+# --no-warn-rwx-segments: the image is intentionally one flat RWX segment
+# (LMA = VMA + the flash image offset, see support/sections.lds and memmap.h).
+build/firmware.elf: $(FIRMWARE_OBJS) build/sections.lds.pp
+	$(TOOLCHAIN_PREFIX)gcc -Os -mabi=ilp32 -march=rv32$(RISCV_EXTENSIONS) -ffreestanding -nostdlib -o $@ -Wl,-Bstatic,-T,build/sections.lds.pp,-Map,build/firmware.map,--strip-debug,--no-warn-rwx-segments,--gc-sections $(FIRMWARE_OBJS) $(LDFLAGS) -lgcc 
 	chmod -x $@
 
 build/flashio_worker.o: flashio_worker.s
@@ -70,11 +84,17 @@ build/romcalls.o: romcalls.S romapi.h ../build/rom.elf ../rom/tools/make_romapi.
 build/%.o: %.c *.h
 	$(TOOLCHAIN_PREFIX)gcc -c -mabi=ilp32 -march=rv32$(RISCV_EXTENSIONS) -Os --std=c99 $(GCC_WARNS) -ffreestanding -nostdlib -o $@ $< 
 
-tools/sign: tools/sign.c tools/randombytes.c tweetnacl.c tweetnacl.h
+# Firmware image signing tool
+tools/sign: tools/sign.c tools/randombytes.c tweetnacl.c tweetnacl.h ../memmap.h
 	$(HOSTCC) tools/sign.c tools/randombytes.c tweetnacl.c -o tools/sign
 
+# Firmware signing keypair generation tool
 tools/genkey: tools/genkey.c tools/randombytes.c tweetnacl.c tweetnacl.h
 	$(HOSTCC) tools/genkey.c tools/randombytes.c tweetnacl.c -o tools/genkey
+
+# Image verification test: verifies a signed image to ensure the Boot ROM will accept it. Run by `make check`.
+tools/vtest: tools/vtest.c tools/randombytes.c tweetnacl.c tweetnacl.h ../memmap.h
+	cc -O2 -Wall -Wextra -Wno-sign-compare -o $@ tools/vtest.c tools/randombytes.c tweetnacl.c
 
 clean_fw:
 	rm build/*

@@ -7,11 +7,12 @@
  *
  * This file allows fk_lib_verify to be called from ROM C code.
  *
- * The trampoline uses t0, and 4 bytes of stack to save the return address.
+ * The trampoline uses t0, and a 16-byte stack frame to save the return
+ * address (psABI requires 16-byte stack aligmnent).
  *
  * FLIB_TARGET is the absolute address of the library's entry point
- * (FLIB_ADDR + offset of fk_lib_verify), injected as -DFK_FLIB_TARGET
- * by the build (see the Makefile / rom/tools/make_lib_inc.py).
+ * (FK_LIB_BASE in memmap.h + offset of fk_lib_verify), injected as
+ * -DFK_FLIB_TARGET by the build (see the Makefile / rom/tools/make_lib_inc.py).
  */
 .equ FLIB_TARGET, FK_FLIB_TARGET
 
@@ -19,11 +20,11 @@
     .globl fk_lib_verify
     .type fk_lib_verify, @function
 fk_lib_verify:
-    addi  sp, sp, -4
+    addi  sp, sp, -16
     sw    ra, 0(sp)
     lui   t0, %hi(FLIB_TARGET)
     addi  t0, t0, %lo(FLIB_TARGET)
     jalr  ra, 0(t0)          /* into the library; ra -> restore below */
     lw    ra, 0(sp)
-    addi  sp, sp, 4
+    addi  sp, sp, 16
     ret

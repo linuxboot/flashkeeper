@@ -2,14 +2,13 @@
 """
 Generate the fwsiglib build flags (rom/tools/make_lib_inc.py --print-defs)
 from the compiled ed25519 verify library (build/libed25519.elf + .bin,
-linked at the fixed address in rom/lib/lib.lds).
+linked at FK_LIB_BASE in memmap.h, via rom/lib/lib.lds).
 
 The flags define:
-  FLIB_ADDR      fixed RAM address the ROM loads the library into
   FLIB_SIZE      library blob size in bytes (a multiple of 4)
   FLIB_HASH_INIT initializer for the 64-byte SHA-512 hash the ROM
                  compares the RAM copy against (see rom/boot.c)
-  FK_FLIB_TARGET FLIB_ADDR + offset of fk_lib_verify: the absolute
+  FK_FLIB_TARGET FK_LIB_BASE + offset of fk_lib_verify: the absolute
                  address the trampoline (rom/libcall.S) jumps to
 
 Changing the library binary changes FLIB_HASH_INIT, which is baked
@@ -54,9 +53,9 @@ def main(elf_path, bin_path, lib_base, print_defs):
         # One -D per value; the hash initializer is one word (no spaces)
         # so it survives shell word-splitting in the make recipe.
         init = "{" + ",".join("0x%02x" % b for b in pin) + "}"
-        print("-DFLIB_ADDR=0x%xu -DFLIB_SIZE=0x%xu "
+        print("-DFLIB_SIZE=0x%xu "
               "-DFLIB_HASH_INIT=%s -DFK_FLIB_TARGET=0x%x"
-              % (lib_base, len(blob), init, target))
+              % (len(blob), init, target))
         return
 
     print("flib: %d bytes, entry %s at +0x%x (target 0x%x)"

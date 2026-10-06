@@ -17,15 +17,17 @@
  *
  * See entry.s in the firmware.
  */
+#include "../memmap.h"
+
 #define FW_ENTRY 0x100
 
     .section .text.entry, "ax"
     .globl rom_reset
 rom_reset:
-    /* Top of the 128 kB SPRAM. PicoRV32 also sets sp here at reset
+    /* Top of the SPRAM (memmap.h). PicoRV32 also sets sp here at reset
        (picosoc STACKADDR); set it explicitly so the ROM does not depend
        on the reset default. */
-    li   sp, 0x20000
+    li   sp, FK_STACK_TOP
 
     /* Defensively zero the register file (PicoRV32 resets it; the old
        XIP boot stub did this too). x1 is hardwired zero, x2 is sp. */

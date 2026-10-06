@@ -22,6 +22,11 @@ static inline uint8_t readbyte_blocking(void){
 // and this will time out. In that case, NAK. flashrom will abort.
 #define SPIOP_BYTE_TIMEOUT_CYCLES (100u * 12000u)
 
+// We tell the host it may send up to 256-byte writes (S_CMD_Q_WRNMAXLEN)
+// and 4096-byte reads (S_CMD_Q_RDNMAXLEN) and NAK anything larger.
+// Therefore, we need SPIOP_MAX_XFER bytes of buffer.
+#define SPIOP_MAX_XFER (0x100u + 0x1000u)
+
 static inline uint8_t uart_rx_ferr(void){
     return (uint8_t) ((reg_uart_sts >> 8) & 0xFF);
 }
@@ -134,7 +139,7 @@ void serprog_command_loop(){
         break;
         case S_CMD_O_SPIOP:
             {
-                static uint8_t buf[8200]; 
+                static uint8_t buf[SPIOP_MAX_XFER];
                 uint8_t hdr[6];
 
                 // In case of UART timeout, send a NAK so Flashrom aborts rather than hanging

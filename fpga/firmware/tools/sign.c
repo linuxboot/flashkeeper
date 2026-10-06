@@ -3,7 +3,7 @@
  *
  * Usage: sign firmware.bin firmware_signed.bin secret_key.key
  *
- * The signature placed at 0x0C0 is a signature of is the 256-byte message:
+ * The signature placed at 0x0C0 is a signature of the 256-byte message:
  *     image[0x000..0x0C0)  ||  SHA-512(image[0x100..size))
  */
 #include <stdio.h>
@@ -13,13 +13,13 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
+#include "../../memmap.h"
 #include "../tweetnacl.h"
 
 #define MAX_FW_SIZE         128 * 1024 // 128 kB of SPRAM available for the firmware image including the header and stack
 #define IMG_HEADER_SIZE     0x100
 #define IMG_MAGIC           0x57464B46u /* "FKFW" little-endian */
 #define IMG_MIN_SIZE        0x104u      /* header + at least the 4-byte entry */
-#define IMG_MAX_SIZE        0x20000u    /* cannot exceed the SPRAM */
 #define IMG_UNSIGNED        0
 #define IMG_SIGNED_ED25519  1
 
@@ -64,10 +64,10 @@ int main(int argc, char* argv[]){
     
     // File must fit in the buffer and the ROM's size limit, and must be word-aligned
     // st_size is signed (off_t), so comparison is signed
-    if(in_stbuf.st_size < (off_t) IMG_MIN_SIZE || in_stbuf.st_size > (off_t) IMG_MAX_SIZE ||
+    if(in_stbuf.st_size < (off_t) IMG_MIN_SIZE || in_stbuf.st_size > (off_t) FK_IMG_MAX ||
        (in_stbuf.st_size & 3)){
         fprintf(stderr, "Firmware image %s is %ld bytes; expected [0x%x, 0x%x] and word-aligned\n",
-                argv[1], (long) in_stbuf.st_size, IMG_MIN_SIZE, IMG_MAX_SIZE);
+                argv[1], (long) in_stbuf.st_size, IMG_MIN_SIZE, FK_IMG_MAX);
         return 6;
     }
     size_t in_size = (size_t) in_stbuf.st_size;
@@ -151,6 +151,15 @@ int main(int argc, char* argv[]){
     }
 
     close(out_file);
+
+    // Make sure crypto_sign_open correctly verifies the signature we just generated
+    uint8_t verify_m[crypto_sign_BYTES + sizeof(message)];
+    if (crypto_sign_open(verify_m, &mlen, sm, crypto_sign_BYTES + sizeof(message),
+                            key + crypto_sign_SECRETKEYBYTES - crypto_sign_PUBLICKEYBYTES) != 0){
+        fprintf(stderr, "Self-test failed - signed image could not be verified with its own key.\n");
+        return 15;
+    }
+    printf("Self-test: Signature verified.\n");
 
     return 0;
 }

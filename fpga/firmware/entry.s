@@ -8,7 +8,10 @@
  *
  *     offset 0x0:  magic 0x57464B46 ("FKFW"), written by mkflashimg.py
  *     offset 0x4:  total image size in bytes, written by mkflashimg.py
- *     offset 0x8:  reserved (future verification metadata)
+ *     offset 0x8:  type (0 = unsigned, 1 = signed ed25519); set by
+ *                  tools/sign.c for signed images, 0 otherwise
+ *     offset 0xA0: signer's ed25519 public key (signed images)
+ *     offset 0xC0: ed25519 signature (signed images)
  *
  *   The image entry point is at image offset 0x100 (RAM 0x100).
  *
@@ -34,16 +37,26 @@ fw_entry:
     /* Initialize sp to _estack (top of the SPRAM, see sections.lds) */
     la   sp, _estack
 
-    /* Zero the .bss/heap/stack region [_edata, _eram): the boot ROM
-       does not know the firmware size, so the firmware finishes its
-       own startup (same scheme as the init_ram the old XIP stub
-       called). */
+    /* Zero the firmware's writable regions, skipping the fwsiglib slot:
+       the boot ROM does not know the firmware size, so the firmware
+       finishes its own startup (same scheme as the init_ram the old XIP
+       stub called). The fwsiglib library at [LIB_BASE, ...) is loaded
+       by the boot ROM and may be called by the firmware, so it must not
+       be zeroed. Zero [_edata, LIB_BASE) (bss + heap + gap) and
+       [STACK_REGION_BASE, _eram) (stack region).
+       */
     la   a0, _edata
-    la   a1, _eram
+    la   a1, LIB_BASE
 1:
     sw   zero, 0(a0)
     addi a0, a0, 4
     blt  a0, a1, 1b
-    call main
+    la   a0, STACK_REGION_BASE
+    la   a1, _eram
 2:
-    j 2b
+    sw   zero, 0(a0)
+    addi a0, a0, 4
+    blt  a0, a1, 2b
+    call main
+3:
+    j 3b

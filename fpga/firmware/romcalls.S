@@ -7,7 +7,8 @@
  * Each stub: the caller's ra (which the C call just set) is saved on
  * the stack, the absolute ROM address is loaded, the call is made, and
  * ra is restored before returning. Arguments (a0-a7) and the return
- * value (a0) are passed through, sp is lowered by 4 during the call, 
+ * value (a0) are passed through, sp is lowered by 16 during the call
+ * (keeps sp 16-byte aligned at the ROM's entry, per the psABI),
  * and t0 (scratch) is clobbered.
  *
  * The ROM addresses are injected as -D flags by the build (see
@@ -21,23 +22,23 @@
     .type fk_rom_hash_sha512, @function
     .globl fk_rom_hash_sha512
 fk_rom_hash_sha512:
-    addi  sp, sp, -4
+    addi  sp, sp, -16
     sw    ra, 0(sp)
     lui   t0, %hi(ROM_SHA512)
     addi  t0, t0, %lo(ROM_SHA512)
     jalr  ra, 0(t0)
     lw    ra, 0(sp)
-    addi  sp, sp, 4
+    addi  sp, sp, 16
     ret
 
     .type fk_rom_hashblocks_sha512, @function
     .globl fk_rom_hashblocks_sha512
 fk_rom_hashblocks_sha512:
-    addi  sp, sp, -4
+    addi  sp, sp, -16
     sw    ra, 0(sp)
     lui   t0, %hi(ROM_SHA512_BLOCKS)
     addi  t0, t0, %lo(ROM_SHA512_BLOCKS)
     jalr  ra, 0(t0)
     lw    ra, 0(sp)
-    addi  sp, sp, 4
+    addi  sp, sp, 16
     ret

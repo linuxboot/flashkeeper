@@ -1,3 +1,4 @@
-# ignore the compiled genkey and sign binaries
+# ignore the compiled genkey, sign and vtest binaries
 genkey
 sign
+vtest

@@ -1,7 +1,14 @@
+/*
+ * This file is preprocessed (`cc -E -P -x c`, see fpga/Makefile) before
+ * linking: the bare ld preprocessor does not support #define. Do not
+ * start any comment line with '#'.
+ */
+#include "../../memmap.h"
+
 MEMORY
 {
-    FLASH (rx) : ORIGIN = 0x00020000, LENGTH = 0x60000
-    RAM (xrw) : ORIGIN = 0x00000000, LENGTH = 0x20000
+    FLASH (rx) : ORIGIN = FK_FLASH_IMAGE_OFF, LENGTH = FK_FLASH_IMAGE_LEN
+    RAM (xrw) : ORIGIN = 0x00000000, LENGTH = FK_SPRAM_SIZE
 }
 ENTRY(fw_entry)
 SECTIONS {
@@ -80,16 +87,20 @@ SECTIONS {
        (entry.s) and may use the whole region; this is a floor, not a cap.
        (ASSERT is a top-level command in this binutils: it must sit
        outside the SECTIONS block, hence below it.) */
-    MIN_STACK_SPACE = 8192;
+    MIN_STACK_SPACE = FK_MIN_STACK_SPACE;
     _estack = ORIGIN(RAM) + LENGTH(RAM);
 
     /* fwsiglib is loaded and verified at [LIB_BASE, ...) at boot. The image
        proper (code + data + bss, i.e. everything up to the heap start) must
        end before LIB_BASE; heap growth is untracked and must stay below it
        too or it corrupts the library. */
-    LIB_BASE = 0x17800;
+    LIB_BASE = FK_LIB_BASE;
+
+    /* Base of the [base, _estack) stack region (memmap.h): entry.s zeroes
+       the stack region when it finishes the firmware's own startup. */
+    STACK_REGION_BASE = FK_STACK_REGION_BASE;
 }
 ASSERT(_estack - _ebss >= MIN_STACK_SPACE,
        "stack space below minimum: image+bss too large");
 ASSERT(_heap_start <= LIB_BASE,
-       "image (code+data+bss) collides with the fwsiglib slot at 0x17800");
+       "image (code+data+bss) collides with the fwsiglib slot at FK_LIB_BASE");

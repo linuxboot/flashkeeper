@@ -32,19 +32,20 @@ int main(int argc, char* argv[]){
 
     crypto_sign_keypair(pk, sk);
 
-    if(write(pk_file, pk, crypto_sign_PUBLICKEYBYTES) != crypto_sign_PUBLICKEYBYTES){
-        fprintf(stderr, "Could not write public key file at %s.\n", argv[1]);
-        return 4;
-    }
-
-    close(pk_file);
-
+    // If the public key can't be written, the pk is still in the sk file, so write sk first
     if(write(sk_file, sk, crypto_sign_SECRETKEYBYTES) != crypto_sign_SECRETKEYBYTES){
         fprintf(stderr, "Could not write secret key file at %s.\n", argv[2]);
         return 5;
     }
 
     close(sk_file);
+
+    if(write(pk_file, pk, crypto_sign_PUBLICKEYBYTES) != crypto_sign_PUBLICKEYBYTES){
+        fprintf(stderr, "Could not write public key file at %s.\n", argv[1]);
+        return 4;
+    }
+
+    close(pk_file);
 
     return 0;
 }
