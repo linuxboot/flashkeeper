@@ -20,10 +20,21 @@ The boot ROM loads the image with one flat copy from flash 0x20000 to
 RAM 0x0, so it is essential that every loadable byte satisfies
 LMA = VMA + 0x20000; this is checked below.
 """
+import os
+import re
 import struct
 import sys
 
-FLASH_BASE = 0x00020000
+# Extract the memory layout constants from memmap.h by pattern-matching #defines
+MEMMAP_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "memmap.h")
+
+def memmap(name):
+    with open(MEMMAP_PATH) as f:
+        m = re.search(rf"^#define {name}[ \t]+(0x[0-9a-fA-F]+)", f.read(), re.M)
+    assert m is not None, f"{name} not found in {MEMMAP_PATH}"
+    return int(m.group(1), 16)
+
+FLASH_BASE = memmap("FK_FLASH_IMAGE_OFF")
 IMG_MAGIC = 0x57464B46  # "FKFW" little-endian; must match fpga/rom/boot.c
 PROGBITS = 1
 PT_LOAD = 1
@@ -87,7 +98,10 @@ def main(elfpath, outpath):
             edata = st_value
     assert edata is not None, "_edata symbol not found"
     assert edata % 4 == 0, f"_edata {edata:#x} not word aligned"
-    assert 0 < edata <= 0x20000, f"_edata {edata:#x} outside RAM"
+
+    # Verify that the firmware image does not collide with the fwsiglib slot above it (from memmap.h)
+    img_max = memmap("FK_IMG_MAX")
+    assert 0 < edata <= img_max, f"_edata {edata:#x} exceeds the {img_max:#x} fwsiglib slot boundary"
 
     # Assemble the image.
     img = bytearray(edata)
@@ -101,8 +115,7 @@ def main(elfpath, outpath):
             f"segment at VMA {p_vaddr:#x}, size {p_filesz:#x} outside [0, {edata:#x})"
         img[p_vaddr:p_vaddr + p_filesz] = data[p_offset:p_offset + p_filesz]
 
-    # The entry point contract: .text (and the entry stub) must sit at
-    # VMA 0x100, right after the 256-byte reserved header.
+    # .text (and the entry stub) must sit at VMA 0x100, right after the 256-byte reserved header.
     stext = None
     for i in range(sh_size // sh_entsize):
         off = sh_offset + i * sh_entsize
@@ -112,7 +125,7 @@ def main(elfpath, outpath):
         name = data[name_start:data.index(b'\x00', name_start)].decode()
         if name == '_stext':
             stext = st_value
-    assert stext == 0x100, f"_stext is {stext:#x}, expected 0x100 (entry contract)"
+    assert stext == 0x100, f"_stext is {stext:#x}, expected 0x100 (entry point from ROM)"
 
     # Write the image header the boot ROM reads: magic + total size.
     assert all(b == 0 for b in img[0:0x100]), \

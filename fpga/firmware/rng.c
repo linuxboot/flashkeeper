@@ -1,5 +1,6 @@
+#include <stdint.h>
 #include "rng.h"
-#include "tweetnacl.h"
+#include "romapi.h" /* SHA-512 in the ROM; called via romcalls.s */
 
 /*
  * rng.c - TRNG driver: raw-bit collection, NIST SP 800-90B health
@@ -129,7 +130,7 @@ static int rng_initialized = 0;
 
 // Blocking: fill dst with n conditioned random bytes. May take many
 // milliseconds (each 64 bytes needs one healthy 4096-bit batch).
-void randombytes(void *dst, size_t n){
+void randombytes(uint8_t *dst, uint64_t n){
     if (!rng_initialized) {
         health_reset_init();
         rng_initialized = 1;
@@ -140,8 +141,10 @@ void randombytes(void *dst, size_t n){
         rng_collect_batch();
         if (health_run_batch()) {
             // Whitening: 512 raw bytes -> 64 conditioned bytes
-            crypto_hash_sha512(d, raw_batch, RNG_BATCH_BYTES);
-            size_t take = (n < RNG_COND_BYTES) ? n : RNG_COND_BYTES;
+            fk_rom_hash_sha512(d, raw_batch, RNG_BATCH_BYTES);
+            /* take is bounded by RNG_COND_BYTES (64), so narrowing
+             * uint64_t -> size_t is safe and explicit */
+            size_t take = (n < RNG_COND_BYTES) ? (size_t) n : RNG_COND_BYTES;
             d += take;
             n -= take;
         }
